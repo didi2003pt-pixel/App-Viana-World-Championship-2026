@@ -1,0 +1,1181 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <!-- PWA Meta Tags -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#0f172a">
+    <link rel="apple-touch-icon" href="icon.png">
+    <title>2026 Formula Kite World Championships</title>
+    
+    <!-- Leaflet CSS para Mapas Reais -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: { slate: { 850: '#152033', 950: '#0a0f18' } },
+                    animation: {
+                        'float': 'float 3s ease-in-out infinite',
+                        'scanline': 'scanline 4s linear infinite',
+                        'slide-down': 'slideDown 0.5s cubic-bezier(0.16, 1, 0.3, 1)',
+                        'progress': 'progress 1.5s ease-in-out forwards'
+                    },
+                    keyframes: {
+                        float: { '0%, 100%': { transform: 'translateY(0)' }, '50%': { transform: 'translateY(-10px)' } },
+                        scanline: { '0%': { transform: 'translateY(-100%)' }, '100%': { transform: 'translateY(100vh)' } },
+                        slideDown: { '0%': { transform: 'translateY(-100%)', opacity: 0 }, '100%': { transform: 'translateY(0)', opacity: 1 } },
+                        progress: { '0%': { transform: 'translateX(-100%)' }, '100%': { transform: 'translateX(0)' } }
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
+    <!-- React & ReactDOM -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Ícones Lucide -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <style>
+        @keyframes spin-slow { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        .animate-spin-slow { animation: spin-slow 12s linear infinite; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        * { -webkit-tap-highlight-color: transparent; }
+
+        body, html { 
+            margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; 
+            background-color: #f8fafc; user-select: none; -webkit-user-select: none;
+        }
+        body { background-color: #0f172a; } 
+        #root { width: 100%; height: 100%; }
+        .typing-dot { animation: typing 1.4s infinite ease-in-out both; }
+        .typing-dot:nth-child(1) { animation-delay: -0.32s; }
+        .typing-dot:nth-child(2) { animation-delay: -0.16s; }
+        @keyframes typing { 0%, 80%, 100% { transform: scale(0); opacity: 0.5; } 40% { transform: scale(1); opacity: 1; } }
+        .ar-background { background: linear-gradient(to bottom, #7dd3fc 0%, #38bdf8 45%, #0284c7 45%, #0369a1 100%); }
+        .dark .ar-background { background: linear-gradient(to bottom, #1e293b 0%, #0f172a 45%, #020617 45%, #000000 100%); }
+        
+        .map-zoom-container { transition: transform 0.3s cubic-bezier(0.2, 0, 0, 1); transform-origin: center center; }
+        
+        /* Ajuste do fundo dos icons do mapa para transparente */
+        .leaflet-div-icon-custom { background: transparent; border: none; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useMemo, useRef, useEffect } = React;
+
+        // --- Configuração Segura dos Ícones ---
+        const Icon = ({ name, size = 24, className = "" }) => {
+            const spanRef = useRef(null);
+            useEffect(() => {
+                if (spanRef.current && window.lucide) {
+                    spanRef.current.innerHTML = '';
+                    const i = document.createElement('i');
+                    i.setAttribute('data-lucide', name);
+                    i.className = className;
+                    const pxSize = typeof size === 'number' ? `${size}px` : size;
+                    if (!className.includes('w-')) i.style.width = pxSize;
+                    if (!className.includes('h-')) i.style.height = pxSize;
+                    spanRef.current.appendChild(i);
+                    window.lucide.createIcons({ root: spanRef.current });
+                }
+            }, [name, size, className]);
+            return <span ref={spanRef} className="contents"></span>;
+        };
+        const MIcon = (p) => <Icon {...p} />;
+
+        // --- DICIONÁRIO DE IDIOMAS ---
+        const dict = {
+            pt: {
+                officialApp: "App Oficial", partners: "Parceiros Oficiais:",
+                tabMap: "MAPA", tabSchedule: "CALENDÁRIO", tabAI: "ASSISTENTE IA", tabSettings: "DEFINIÇÕES",
+                tabTracking: "TRACKING LIVE", tabAthletes: "ATLETAS", tabFans: "LIVE & FÃS", tabResults: "RESULTADOS",
+                subtitle: "Viana do Castelo", subtitleDates: "9-16 May 2026",
+                filterAll: "Tudo", filterRace: "Regata", filterLogistics: "Logística", filterFanzone: "Público",
+                backBtn: "Voltar", poiTitle: "PONTOS DE INTERESSE",
+                locationsCount: "LOCAIS", windTitle: "PREVISÃO VENTO", windDir: "DIREÇÃO", windAiBtn: "IA Preditiva",
+                schedTitle: "Calendário Oficial", schedDoc: "Versão 1.1",
+                schedRulesTitle: "Limites de Regata", schedRulesDesc: "Regulamento Destacado",
+                rule1: "Max Race Time é 24m (Qualificação) e 14m (Finais).",
+                rule2: "Troca de Kites requer autorização técnica.",
+                rule3: "Bibs e tracking devices obrigatórios sobre o colete.",
+                askAiRulesBtn: "Pedir Explicação IA",
+                aiTitle: "Consultor IA", aiPlaceholder: "Ex: Como funciona o limite de tempo?",
+                aiWelcome: "Olá! Sou a IA oficial. Pergunta sobre regras, Fan Zones ou previsão de vento! ✨",
+                aiDisclaimer: "As respostas são geradas por IA e não substituem os documentos oficiais.",
+                settingsTitle: "Definições", settingsLang: "Idioma", settingsTheme: "Aparência",
+                arBtn: "Modo AR", arOverlayTitle: "REALIDADE AUMENTADA (BETA)", arClose: "FECHAR",
+                arAim: "Aponte a câmara para a foz do Rio Lima", arMark1: "Boia 1 (Barlavento)", arMark2: "Boia 2 (Sotavento)", arDistance: "Distância: 1.2km",
+                toast1: "⚠️ Regata adiada momentaneamente por falta de vento nas Finais.",
+                toast2: "🏁 Start Qualificações em 10 minutos!",
+                toast3: "🌬 Nortada a aumentar para 22kt constantes.",
+                trackPos: "POS", trackName: "ATLETA", trackNat: "PAÍS", trackSpeed: "VELOCIDADE", trackExport: "Exportar CSV",
+                fansLive: "TRANSMISSÃO EM DIRETO", fansGuide: "GUIA DO ESPECTADOR",
+                guideFood: "Gastronomia Local", guideFoodDesc: "Tasquinhas de peixe fresco na zona da Areosa.",
+                guidePark: "Estacionamento VIP", guideParkDesc: "P3 disponível no Pinhal do Cabedelo.",
+                guideView: "Melhor Vista", guideViewDesc: "O molhe sul oferece vista direta para a marca 1.",
+                scheduleLabel: "Informação", scheduleDesc: "Conforme KML Oficial do Evento", askAiBtn: "PERGUNTAR À IA",
+                notifTitle: "AVISOS DA FROTA", notifLive: "LIVE",
+                resOverall: "Classificação Geral", resRaces: "Por Regata", resMedal: "Medal Series",
+                resPts: "PTS LÍQUIDOS", athSail: "Vela", athKite: "Kite", athRank: "Ranking Mundial",
+                settingsPartners: "Entidades & Parceiros",
+                partnerFPVDesc: "Tutela do desporto a nível nacional.",
+                partnerIKADesc: "Gestão do circuito e classe Formula Kite.",
+                partnerWSDesc: "Federação internacional de vela.",
+                partnerModoDesc: "Escola oficial parceira do evento."
+            },
+            en: {
+                officialApp: "Official App", partners: "Official Partners:",
+                tabMap: "MAP", tabSchedule: "SCHEDULE", tabAI: "AI ASSISTANT", tabSettings: "SETTINGS",
+                tabTracking: "LIVE TRACKING", tabAthletes: "ATHLETES", tabFans: "LIVE & FANS", tabResults: "RESULTS",
+                subtitle: "Viana do Castelo", subtitleDates: "May 9-16, 2026",
+                filterAll: "All", filterRace: "Race", filterLogistics: "Logistics", filterFanzone: "Public",
+                backBtn: "Back", poiTitle: "POINTS OF INTEREST",
+                locationsCount: "LOCATIONS", windTitle: "WIND FORECAST", windDir: "DIR", windAiBtn: "AI Predict",
+                schedTitle: "Official Schedule", schedDoc: "Version 1.1",
+                schedRulesTitle: "Race Time Limits", schedRulesDesc: "Key Regulations",
+                rule1: "Max Race Time is 24m (Qualifying) and 14m (Finals).",
+                rule2: "Kite replacement requires technical authorization.",
+                rule3: "Bibs and tracking devices mandatory over impact vest.",
+                askAiRulesBtn: "Ask AI for Explanation",
+                aiTitle: "AI Consultant", aiPlaceholder: "Ex: How does the time limit work?",
+                aiWelcome: "Hello! I'm the official AI. Ask about rules, Fan Zones, or wind forecasts! ✨",
+                aiDisclaimer: "Responses are generated by AI and do not replace official documents.",
+                settingsTitle: "Settings", settingsLang: "Language", settingsTheme: "Theme",
+                arBtn: "AR Mode", arOverlayTitle: "AUGMENTED REALITY (BETA)", arClose: "CLOSE",
+                arAim: "Aim your camera at the Lima River mouth", arMark1: "Mark 1 (Windward)", arMark2: "Mark 2 (Leeward)", arDistance: "Distance: 1.2km",
+                toast1: "⚠️ Race temporarily postponed due to lack of wind in the Finals Area.",
+                toast2: "🏁 Start Qualifiers in 10 minutes!",
+                toast3: "🌬 Nortada wind increasing to a steady 22kt.",
+                trackPos: "POS", trackName: "ATHLETE", trackNat: "NAT", trackSpeed: "SPEED", trackExport: "Export CSV",
+                fansLive: "LIVE BROADCAST", fansGuide: "SPECTATOR GUIDE",
+                guideFood: "Local Gastronomy", guideFoodDesc: "Fresh fish taverns in the Areosa area.",
+                guidePark: "VIP Parking", guideParkDesc: "P3 available at Cabedelo Pine Forest.",
+                guideView: "Best Viewpoint", guideViewDesc: "The south pier offers direct views of Mark 1.",
+                scheduleLabel: "Information", scheduleDesc: "As per Official Event KML", askAiBtn: "ASK AI",
+                notifTitle: "FLEET NOTICES", notifLive: "LIVE",
+                resOverall: "Overall Results", resRaces: "Race by Race", resMedal: "Medal Series",
+                resPts: "NET PTS", athSail: "Sail", athKite: "Kite", athRank: "World Ranking",
+                settingsPartners: "Entities & Partners",
+                partnerFPVDesc: "National sports authority.",
+                partnerIKADesc: "Circuit and Formula Kite class management.",
+                partnerWSDesc: "International sailing federation.",
+                partnerModoDesc: "Official partner kite school."
+            }
+        };
+
+        const App = () => {
+          // --- SPLASH SCREEN STATE ---
+          const [showSplash, setShowSplash] = useState(true);
+          const [splashFadeOut, setSplashFadeOut] = useState(false);
+
+          useEffect(() => {
+              const fadeTimer = setTimeout(() => { setSplashFadeOut(true); }, 1500);
+              const removeTimer = setTimeout(() => { setShowSplash(false); }, 2000);
+              return () => { clearTimeout(fadeTimer); clearTimeout(removeTimer); };
+          }, []);
+
+          const [activeTab, setActiveTab] = useState('map'); 
+          const [activeFilters, setActiveFilters] = useState(['all']);
+          const [selectedPoint, setSelectedPoint] = useState(null);
+          
+          const [lang, setLang] = useState('pt');
+          const t = dict[lang];
+          const [isDarkMode, setIsDarkMode] = useState(false);
+          const [showNotifs, setShowNotifs] = useState(false);
+          
+          const [mapZoom, setMapZoom] = useState(1);
+          const [isFullscreen, setIsFullscreen] = useState(false);
+          const [toastMsg, setToastMsg] = useState(null);
+
+          const [checkins, setCheckins] = useState([]);
+          const totalPoints = checkins.length * 50;
+          const [resTab, setResTab] = useState('overall');
+          const [showAR, setShowAR] = useState(false);
+
+          const [chatHistory, setChatHistory] = useState([]);
+          const [chatInput, setChatInput] = useState('');
+          const [isTyping, setIsTyping] = useState(false);
+          const chatEndRef = useRef(null);
+
+          useEffect(() => { setChatHistory([{ role: 'model', text: t.aiWelcome }]); }, [lang, t.aiWelcome]);
+
+          const scrollToBottom = () => { chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }); };
+          useEffect(() => { scrollToBottom(); }, [chatHistory, isTyping, activeTab]);
+
+          const toggleFilter = (id) => {
+              if (id === 'all') { setActiveFilters(['all']); return; }
+              let newFilters = activeFilters.filter(f => f !== 'all');
+              if (newFilters.includes(id)) {
+                  newFilters = newFilters.filter(f => f !== id);
+                  if (newFilters.length === 0) newFilters = ['all'];
+              } else { newFilters.push(id); }
+              setActiveFilters(newFilters);
+              setSelectedPoint(null);
+          };
+
+          const handleCheckin = (locId) => {
+              if (!checkins.includes(locId)) {
+                  setCheckins([...checkins, locId]);
+                  showToast(lang === 'pt' ? "Check-in Concluído! +50 pts" : "Check-in Completed! +50 pts");
+              }
+          };
+
+          const toggleFullscreen = () => {
+              if (!document.fullscreenElement) {
+                  document.documentElement.requestFullscreen().catch(err => console.log(err));
+                  setIsFullscreen(true);
+              } else {
+                  if (document.exitFullscreen) {
+                      document.exitFullscreen();
+                      setIsFullscreen(false);
+                  }
+              }
+          };
+
+          const showToast = (msg) => {
+              setToastMsg(msg);
+              setTimeout(() => setToastMsg(null), 6000);
+          };
+
+          useEffect(() => {
+              if (!showSplash) {
+                  const timer1 = setTimeout(() => showToast(t.toast2), 3000);
+                  const timer2 = setTimeout(() => showToast(t.toast3), 15000);
+                  return () => { clearTimeout(timer1); clearTimeout(timer2); };
+              }
+          }, [showSplash, t.toast2, t.toast3]);
+
+          // Tracking State
+          const [liveAthletes, setLiveAthletes] = useState([
+              { id: 1, pos: 1, name: 'A. Mazella', country: 'FRA', flag: '🇫🇷', sail: '21', speed: 28, x: 25, y: 35 },
+              { id: 2, pos: 2, name: 'M. Maeder', country: 'SGP', flag: '🇸🇬', sail: '1', speed: 27, x: 23, y: 38 },
+              { id: 3, pos: 3, name: 'T. Pires Lima', country: 'POR', flag: '🇵🇹', sail: '7', speed: 26, x: 26, y: 40 },
+              { id: 4, pos: 4, name: 'D. Moroz', country: 'USA', flag: '🇺🇸', sail: '14', speed: 24, x: 24, y: 45 },
+          ]);
+
+          useEffect(() => {
+              if (activeTab !== 'tracking' || showSplash) return;
+              const interval = setInterval(() => {
+                  setLiveAthletes(prev => prev.map(a => ({
+                      ...a,
+                      x: Math.min(35, Math.max(15, a.x + (Math.random() - 0.5) * 1.5)),
+                      y: Math.min(60, Math.max(25, a.y + (Math.random() - 0.5) * 1.5)),
+                      speed: Math.floor(Math.max(20, Math.min(35, a.speed + (Math.random() - 0.5) * 2)))
+                  })));
+              }, 1500);
+              return () => clearInterval(interval);
+          }, [activeTab, showSplash]);
+
+          const exportCSV = () => {
+              const csv = `${t.trackPos},${t.trackName},${t.trackNat},${t.trackSpeed}\n` + 
+                          liveAthletes.map(a => `${a.pos},${a.name},${a.country},${a.speed}`).join('\n');
+              const blob = new Blob([csv], { type: 'text/csv' });
+              const url = window.URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url; a.download = 'viana2026_live_ranking.csv'; a.click();
+              showToast(lang === 'pt' ? "CSV Exportado com sucesso! ✅" : "CSV Exported successfully! ✅");
+          };
+
+          // 🏄 ATLETAS DATA
+          const athleteProfiles = [
+              { name: 'Axel Mazella', nat: 'FRA', flag: '🇫🇷', sail: '21', rank: 1, gear: 'Ozone / Levitaz', kites: '15m / 11m / 9m VMG', desc: lang === 'pt' ? 'Favorito com vento forte e águas mexidas.' : 'Favorite in strong winds and choppy waters.' },
+              { name: 'Max Maeder', nat: 'SGP', flag: '🇸🇬', sail: '1', rank: 2, gear: 'Flysurfer', kites: '21m / 15m / 11m', desc: lang === 'pt' ? 'Campeão do mundo em título.' : 'Reigning world champion.' },
+              { name: 'Riccardo Pianosi', nat: 'ITA', flag: '🇮🇹', sail: '10', rank: 4, gear: 'Ozone', kites: '15m / 11m / 9m', desc: lang === 'pt' ? 'Jovem promessa italiana super rápida.' : 'Young Italian promise, incredibly fast.' },
+              { name: 'Connor Bainbridge', nat: 'GBR', flag: '🇬🇧', sail: '4', rank: 3, gear: 'Flysurfer', kites: '21m / 15m / 11m', desc: lang === 'pt' ? 'Especialista em condições de vento leve.' : 'Specialist in light wind conditions.' },
+              { name: 'Daniela Moroz', nat: 'USA', flag: '🇺🇸', sail: '14', rank: 1, gear: 'Flysurfer', kites: '15m / 11m / 9m', desc: lang === 'pt' ? 'Líder incontestável da elite feminina.' : 'Undisputed leader of the female elite.' },
+              { name: 'Tomás Pires Lima', nat: 'POR', flag: '🇵🇹', sail: '7', rank: 18, gear: 'F-One', kites: '15m / 11m / 9m', desc: lang === 'pt' ? 'Nova geração, a competir em casa durante a qualificação Olímpica.' : 'New generation, competing at home during Olympic qualification.' },
+              { name: 'Mafalda Pires Lima', nat: 'POR', flag: '🇵🇹', sail: '12', rank: 12, gear: 'F-One', kites: '15m / 11m', desc: lang === 'pt' ? 'Experiência em qualificação Olímpica e atleta em progressão.' : 'Previous Olympic qualification experience and progressing.' },
+          ];
+
+          // 🏆 RESULTADOS DATA
+          const resultsOverall = [
+              { pos: 1, nat: 'FRA', flag: '🇫🇷', name: 'Axel Mazella', r1: 1, r2: 2, r3: 1, r4: '(5)', net: 4 },
+              { pos: 2, nat: 'GBR', flag: '🇬🇧', name: 'Connor Bainbridge', r1: 3, r2: 1, r3: '(4)', r4: 2, net: 6 },
+              { pos: 3, nat: 'ITA', flag: '🇮🇹', name: 'Riccardo Pianosi', r1: 2, r2: '(6)', r3: 2, r4: 3, net: 7 },
+              { pos: 4, nat: 'SGP', flag: '🇸🇬', name: 'Max Maeder', r1: '(7)', r2: 3, r3: 3, r4: 1, net: 7 },
+              { pos: 5, nat: 'POR', flag: '🇵🇹', name: 'Tomás Pires Lima', r1: 4, r2: 4, r3: 5, r4: '(10)', net: 13 },
+          ];
+
+          const resultsMedal = [
+              { pos: 1, nat: 'FRA', flag: '🇫🇷', name: 'Axel Mazella', status: 'WINNER' },
+              { pos: 2, nat: 'GBR', flag: '🇬🇧', name: 'Connor Bainbridge', status: 'FINALIST' },
+              { pos: 3, nat: 'ITA', flag: '🇮🇹', name: 'Riccardo Pianosi', status: 'FINALIST' },
+              { pos: 4, nat: 'SGP', flag: '🇸🇬', name: 'Max Maeder', status: 'FINALIST' },
+              { pos: 5, nat: 'POR', flag: '🇵🇹', name: 'Tomás Pires Lima', status: 'SEMI-FINAL' },
+          ];
+
+          // === DADOS KML OFICIAIS EXTRAÍDOS ===
+          const kmlLocations = useMemo(() => [
+              { id: 'race_groups', type: 'race', name: lang === 'pt' ? 'Qualificações (Race Area)' : 'Qualifiers (Race Area)', description: lang === 'pt' ? 'Área principal para as regatas de qualificação no oceano.' : 'Main zone for ocean qualifying races.', coords: [[41.680864,-8.849865],[41.685324,-8.859378],[41.682129,-8.868657],[41.671461,-8.870596],[41.667096,-8.859935],[41.670984,-8.847808]], iconStr: 'waves', icon: <MIcon name="waves" />, color: '#facc15', twColor: 'bg-yellow-500', hasQR: false },
+              { id: 'race_finals', type: 'race', name: lang === 'pt' ? 'Finais (Race Area)' : 'Finals (Race Area)', description: lang === 'pt' ? 'Área reservada para a Medal Series (Finais).' : 'Reserved for the Medal Series (Finals).', coords: [[41.670146,-8.839606],[41.668041,-8.835275],[41.668890,-8.831358],[41.673116,-8.831389],[41.675537,-8.834998],[41.674686,-8.838955]], iconStr: 'trophy', icon: <MIcon name="trophy" />, color: '#facc15', twColor: 'bg-yellow-400', hasQR: false },
+              { id: 'hotel', type: 'logistics', name: 'Hotel Feel Viana', description: lang === 'pt' ? 'Alojamento oficial das equipas e organização ao lado da prova.' : 'Official accommodation for teams and organization near the venue.', coords: [[41.680353,-8.829790],[41.680857,-8.828637],[41.681817,-8.830230],[41.681533,-8.830842]], iconStr: 'building', icon: <MIcon name="building" />, color: '#8b5cf6', twColor: 'bg-purple-600', hasQR: true },
+              { id: 'riders_tent', type: 'logistics', name: 'Riders Tent', description: lang === 'pt' ? 'Tenda de apoio aos atletas.' : 'Athletes support tent.', coords: [[41.678644,-8.831298],[41.678337,-8.830976],[41.678421,-8.830871],[41.678722,-8.831183]], iconStr: 'tent', icon: <MIcon name="tent" />, color: '#3b82f6', twColor: 'bg-blue-500', hasQR: false },
+              { id: 'race_office', type: 'fanzone', name: 'Racing Office & Measurements', description: lang === 'pt' ? 'Secretariado oficial e zona de medição.' : 'Official secretariat and measurement zone.', coords: [[41.678862,-8.831542],[41.678886,-8.831515],[41.678922,-8.831483],[41.679005,-8.831632],[41.678940,-8.831689]], iconStr: 'info', icon: <MIcon name="info" />, color: '#ef4444', twColor: 'bg-red-500', hasQR: true },
+              { id: 'beach_bar', type: 'fanzone', name: 'Beach Bar', description: lang === 'pt' ? 'Ponto de encontro e socialização.' : 'Meeting and socialization point.', coords: [[41.678858,-8.831532],[41.678809,-8.831436],[41.678868,-8.831387],[41.678915,-8.831475]], iconStr: 'coffee', icon: <MIcon name="coffee" />, color: '#ec4899', twColor: 'bg-pink-500', hasQR: true },
+              { id: 'south_van', type: 'logistics', name: 'South Van Parking', description: lang === 'pt' ? 'Estacionamento Sul para carrinhas.' : 'South parking for vans.', coords: [[41.678060,-8.827693],[41.677928,-8.827567],[41.678295,-8.827095],[41.678394,-8.827213]], iconStr: 'car', icon: <MIcon name="car" />, color: '#64748b', twColor: 'bg-slate-500', hasQR: false },
+              { id: 'north_van', type: 'logistics', name: 'North Van Parking', description: lang === 'pt' ? 'Estacionamento Norte para carrinhas.' : 'North parking for vans.', coords: [[41.680407,-8.828795],[41.680366,-8.828745],[41.680612,-8.828167],[41.680658,-8.828221]], iconStr: 'car', icon: <MIcon name="car" />, color: '#64748b', twColor: 'bg-slate-500', hasQR: false },
+              { id: 'trailer_park', type: 'logistics', name: 'Trailer Park', description: lang === 'pt' ? 'Estacionamento de atrelados.' : 'Trailer parking.', coords: [[41.685294,-8.837139],[41.685448,-8.837358],[41.685157,-8.837791],[41.685004,-8.837564]], iconStr: 'truck', icon: <MIcon name="truck" />, color: '#64748b', twColor: 'bg-slate-500', hasQR: false },
+              { id: 'rib_south', type: 'logistics', name: 'Rib South', description: lang === 'pt' ? 'Estacionamento de barcos de apoio a sul.' : 'Support boats parking south.', coords: [[41.683102,-8.829154],[41.683367,-8.829112],[41.683573,-8.830164],[41.683328,-8.830247]], iconStr: 'anchor', icon: <MIcon name="anchor" />, color: '#f97316', twColor: 'bg-orange-500', hasQR: false },
+              { id: 'rib_north', type: 'logistics', name: 'Rib Area North', description: lang === 'pt' ? 'Estacionamento de barcos de apoio a norte.' : 'Support boats parking north.', coords: [[41.686631,-8.838747],[41.686393,-8.839250],[41.685539,-8.838522],[41.685732,-8.838111]], iconStr: 'anchor', icon: <MIcon name="anchor" />, color: '#f97316', twColor: 'bg-orange-500', hasQR: false },
+              { id: 'rib_crane', type: 'logistics', name: 'Rib Crane', description: lang === 'pt' ? 'Grua para colocação de barcos.' : 'Crane for deploying boats.', coords: [[41.685025,-8.838565],[41.684902,-8.838449],[41.685060,-8.838120],[41.685173,-8.838277]], iconStr: 'ship', icon: <MIcon name="ship" />, color: '#06b6d4', twColor: 'bg-cyan-500', hasQR: false }
+          ], [lang]);
+
+          const kmlLines = [
+              { id: 'north_barrier', name: 'North Beach Barrier', color: '#ef4444', coords: [[41.679339,-8.832465],[41.678788,-8.832961]] },
+              { id: 'south_barrier', name: 'South Beach Barrier', color: '#ef4444', coords: [[41.678167,-8.830496],[41.677703,-8.830962]] }
+          ];
+
+          const filteredLocations = useMemo(() => {
+              if (activeFilters.includes('all')) return kmlLocations;
+              return kmlLocations.filter(loc => activeFilters.includes(loc.type));
+          }, [activeFilters, kmlLocations]);
+
+          // --- LEAFLET MAP EFFECT ---
+          useEffect(() => {
+              if (activeTab === 'map' && !showSplash) {
+                  // Destruir mapa anterior se existir para evitar conflitos no React
+                  if (window.leafletMap) {
+                      window.leafletMap.remove();
+                      window.leafletMap = null;
+                  }
+
+                  const mapContainer = document.getElementById('real-map');
+                  if (mapContainer && window.L) {
+                      // Inicializar Leaflet em Cabedelo
+                      const map = window.L.map('real-map', { zoomControl: false }).setView([41.679, -8.840], 14);
+                      window.leafletMap = map;
+                      
+                      // Camada Google Satellite via URL nativa
+                      window.L.tileLayer('https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
+                          maxZoom: 20,
+                          attribution: '© Google'
+                      }).addTo(map);
+
+                      // Desenhar Linhas (Beach Barriers)
+                      kmlLines.forEach(line => {
+                          window.L.polyline(line.coords, { color: line.color, weight: 4, dashArray: '5, 5' }).addTo(map);
+                      });
+
+                      // Desenhar Polígonos e Icons KML
+                      kmlLocations.forEach(loc => {
+                          // O Polígono real
+                          const poly = window.L.polygon(loc.coords, {
+                              color: loc.color,
+                              fillColor: loc.color,
+                              fillOpacity: 0.4,
+                              weight: 2
+                          }).addTo(map);
+
+                          // Calcular centro matemático para colocar o Icon UI
+                          let latSum = 0, lngSum = 0;
+                          loc.coords.forEach(c => { latSum += c[0]; lngSum += c[1]; });
+                          const center = [latSum / loc.coords.length, lngSum / loc.coords.length];
+                          
+                          // Ponto flutuante personalizado (Semelhante ao que tinhas no SVG)
+                          const divIcon = window.L.divIcon({
+                              className: 'leaflet-div-icon-custom',
+                              html: `<div class="${loc.twColor} w-8 h-8 rounded-xl shadow-[0_0_15px_rgba(0,0,0,0.5)] border-2 border-white flex items-center justify-center text-white cursor-pointer hover:scale-110 transition-transform" onclick="window.selectLocGlobal('${loc.id}')">
+                                       <i data-lucide="${loc.iconStr}" style="width:16px;height:16px;"></i>
+                                     </div>`,
+                              iconSize: [32, 32],
+                              iconAnchor: [16, 16]
+                          });
+
+                          window.L.marker(center, {icon: divIcon}).addTo(map);
+                      });
+                      
+                      // Processar ícones injetados no HTML cru
+                      setTimeout(() => { if(window.lucide) window.lucide.createIcons(); }, 150);
+                  }
+              }
+          }, [activeTab, showSplash, kmlLocations]);
+
+          // Global hook para clicks no mapa vindo de dentro do Leaflet HTML
+          useEffect(() => {
+              window.selectLocGlobal = (id) => {
+                  const loc = kmlLocations.find(l => l.id === id);
+                  if(loc) setSelectedPoint(loc);
+              };
+          }, [kmlLocations]);
+
+          // Zoom animado para o ponto quando clicado na Sidebar
+          useEffect(() => {
+              if (selectedPoint && window.leafletMap) {
+                  let latSum = 0, lngSum = 0;
+                  selectedPoint.coords.forEach(c => { latSum += c[0]; lngSum += c[1]; });
+                  const center = [latSum / selectedPoint.coords.length, lngSum / selectedPoint.coords.length];
+                  window.leafletMap.flyTo(center, 17, { duration: 1.5 });
+              }
+          }, [selectedPoint]);
+
+
+          const eventSchedule = useMemo(() => [
+              { date: '8 Mai', activity: lang === 'pt' ? 'Abertura do Recinto / Registo' : 'Venue Opening / Registration', time: '15:00 - 18:00', status: 'setup' },
+              { date: '9 Mai', activity: lang === 'pt' ? 'Inspeção de Equipamento' : 'Equipment Inspection', time: '09:00 - 18:00', status: 'check' },
+              { date: '10 Mai', activity: lang === 'pt' ? 'Cerimónia de Abertura' : 'Opening Ceremony', time: '18:00', status: 'event' },
+              { date: '11-15 Mai', activity: lang === 'pt' ? 'Opening Series (Qualificação)' : 'Opening Series (Qualifying)', time: '11:00+', status: 'race' },
+              { date: '16 Mai', activity: lang === 'pt' ? 'Medal Series & Entrega de Prémios' : 'Medal Series & Prize Giving', time: '12:15 / 18:00', status: 'final' },
+          ], [lang]);
+
+          const handleSendChat = async () => { 
+             if(!chatInput) return;
+             setChatHistory(prev => [...prev, { role: 'user', text: chatInput }]);
+             setChatInput(''); setIsTyping(true);
+             setTimeout(() => {
+                 setChatHistory(prev => [...prev, { role: 'model', text: lang === 'pt' ? 'A Formula Kite é uma classe olímpica de extrema velocidade e tática! A nortada em Viana é ideal para estas pranchas hydrofoil.' : 'Formula Kite is an extremely fast and tactical Olympic class! The Nortada wind in Viana is ideal for these hydrofoils.' }]);
+                 setIsTyping(false);
+             }, 1500);
+          };
+
+          return (
+            <div className={isDarkMode ? 'dark' : ''}>
+              
+              {/* === SPLASH SCREEN PROFISSIONAL === */}
+              {showSplash && (
+                  <div className={`absolute inset-0 z-[100] flex flex-col items-center justify-center bg-slate-900 transition-opacity duration-500 ease-in-out ${splashFadeOut ? 'opacity-0' : 'opacity-100'}`}>
+                      <div className="w-24 h-24 lg:w-32 lg:h-32 bg-gradient-to-br from-emerald-400 to-emerald-600 rounded-[2rem] lg:rounded-[3rem] text-white font-black italic shadow-[0_0_50px_rgba(52,211,153,0.5)] flex items-center justify-center mb-6 animate-pulse">
+                          <span className="text-4xl lg:text-5xl">FK</span>
+                      </div>
+                      <h1 className="text-white font-black tracking-[0.2em] text-xl lg:text-2xl uppercase">Viana 2026</h1>
+                      <p className="text-emerald-400 text-xs lg:text-sm font-bold tracking-widest mt-2 uppercase opacity-80">World Championships</p>
+                      
+                      <div className="w-40 lg:w-48 h-1 bg-slate-800 rounded-full mt-10 overflow-hidden relative">
+                          <div className="absolute top-0 bottom-0 left-0 bg-emerald-500 w-full animate-progress rounded-full"></div>
+                      </div>
+                  </div>
+              )}
+
+              <div className="flex flex-col h-[100dvh] bg-slate-50 dark:bg-slate-950 font-sans text-slate-900 dark:text-slate-100 overflow-hidden transition-colors duration-300 relative">
+                
+                {/* === MODAL DE REALIDADE AUMENTADA (AR SIMULATOR) === */}
+                {showAR && (
+                    <div className="absolute inset-0 z-50 ar-background overflow-hidden flex flex-col animate-in fade-in duration-500">
+                        <div className="absolute top-0 left-0 w-full h-[2px] bg-emerald-400/50 shadow-[0_0_20px_4px_rgba(52,211,153,0.5)] animate-scanline z-10 pointer-events-none"></div>
+                        <div className="absolute top-6 w-full px-6 flex justify-between items-start z-20">
+                            <div>
+                                <span className="inline-block bg-red-500 text-white text-[10px] font-black uppercase px-2 py-1 rounded-md animate-pulse mb-2">{t.arOverlayTitle}</span>
+                                <p className="text-white/80 text-xs font-medium">{t.arAim}</p>
+                            </div>
+                            <button onClick={() => setShowAR(false)} className="bg-white/10 hover:bg-white/20 backdrop-blur-md text-white border border-white/20 px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2">
+                                <MIcon name="x" size={14} /> {t.arClose}
+                            </button>
+                        </div>
+                        <div className="absolute top-8 right-1/2 translate-x-1/2 text-white/50 text-xl font-light tracking-[0.5em] flex gap-8 z-10 pointer-events-none">
+                            <span>|</span><span>|</span><span>NW</span><span>|</span><span>|</span>
+                        </div>
+                        <div className="flex-1 relative w-full h-full flex items-center justify-center z-10">
+                            <div className="w-16 h-16 border border-white/30 rounded-full flex items-center justify-center relative">
+                                <div className="w-1 h-1 bg-emerald-400 rounded-full"></div>
+                                <div className="absolute top-0 bottom-0 left-1/2 w-px bg-white/20"></div>
+                                <div className="absolute left-0 right-0 top-1/2 h-px bg-white/20"></div>
+                            </div>
+                            <div className="absolute left-[30%] top-[40%] animate-float flex flex-col items-center group cursor-pointer">
+                                <div className="w-8 h-8 md:w-12 md:h-12 bg-orange-500 rounded-full shadow-[0_0_30px_rgba(249,115,22,0.8)] border-4 border-white flex items-center justify-center text-white mb-2 transform -rotate-12 group-hover:scale-110 transition-transform">
+                                    <MIcon name="triangle" size={16} />
+                                </div>
+                                <div className="bg-slate-900/80 backdrop-blur border border-white/10 px-3 py-1.5 rounded-lg text-center">
+                                    <p className="text-white font-bold text-[10px] md:text-xs">{t.arMark1}</p>
+                                    <p className="text-emerald-400 font-mono text-[9px]">{t.arDistance}</p>
+                                </div>
+                            </div>
+                            <div className="absolute right-[25%] top-[55%] animate-float flex flex-col items-center group cursor-pointer" style={{ animationDelay: '1.5s' }}>
+                                <div className="w-6 h-6 md:w-10 md:h-10 bg-yellow-400 rounded-full shadow-[0_0_20px_rgba(250,204,21,0.6)] border-[3px] border-white flex items-center justify-center text-yellow-900 mb-2 transform rotate-12 group-hover:scale-110 transition-transform">
+                                    <MIcon name="triangle" size={12} className="rotate-180" />
+                                </div>
+                                <div className="bg-slate-900/80 backdrop-blur border border-white/10 px-2 py-1 rounded-md text-center">
+                                    <p className="text-white font-bold text-[9px] md:text-[10px]">{t.arMark2}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* TOAST NOTIFICATION 7️⃣ */}
+                {toastMsg && (
+                    <div className="absolute top-20 left-1/2 -translate-x-1/2 z-50 animate-slide-down">
+                        <div className="bg-slate-900 dark:bg-white text-white dark:text-slate-900 px-6 py-3 rounded-full shadow-2xl font-bold text-sm flex items-center gap-3 border border-slate-700 dark:border-slate-200">
+                            <MIcon name="radio" size={18} className="text-emerald-400 dark:text-emerald-600 animate-pulse" />
+                            {toastMsg}
+                        </div>
+                    </div>
+                )}
+
+                {/* === HEADER PRINCIPAL C/ BRANDING OFICIAL === */}
+                <header className="bg-slate-900 dark:bg-black text-white z-40 shadow-xl shrink-0 flex flex-col relative">
+                  
+                  {/* Top Ribbon - Partners */}
+                  <div className="bg-slate-950/50 border-b border-white/5 py-1.5 px-4 lg:px-6 flex justify-between items-center text-[9px] lg:text-[10px] text-slate-400 uppercase tracking-widest hidden sm:flex">
+                     <span className="font-bold text-emerald-500 flex items-center gap-1.5"><MIcon name="smartphone" size={12}/> {t.officialApp}</span>
+                     <div className="flex items-center gap-4">
+                         <span>{t.partners}</span>
+                         <div className="flex items-center gap-4 text-slate-300">
+                             <a href="https://sailing.org" target="_blank" className="flex items-center gap-1 hover:text-white transition-colors"><MIcon name="compass" size={12}/> World Sailing</a>
+                             <a href="https://kiteclasses.org" target="_blank" className="flex items-center gap-1 hover:text-white transition-colors"><MIcon name="wind" size={12}/> IKA</a>
+                             <a href="https://fpvela.pt" target="_blank" className="flex items-center gap-1 hover:text-white transition-colors"><MIcon name="flag" size={12}/> FPVela</a>
+                         </div>
+                     </div>
+                  </div>
+
+                  {/* Main Header Area */}
+                  <div className="px-4 py-3 lg:px-6 lg:py-4 flex flex-col lg:flex-row lg:items-center justify-between gap-3 lg:gap-4 border-b border-slate-800">
+                      <div className="flex items-center justify-between w-full lg:w-auto">
+                          {/* Logo e Título com Subtítulo e Bandeira */}
+                          <div className="flex items-center gap-3 lg:gap-4">
+                            <div className="bg-gradient-to-br from-emerald-400 to-emerald-600 p-2 lg:p-2.5 rounded-xl text-white font-black italic shadow-lg shadow-emerald-500/30 flex items-center justify-center">
+                              <span className="text-sm lg:text-base leading-none">FK</span>
+                            </div>
+                            <div>
+                              <h1 className="text-base lg:text-xl font-black tracking-tight leading-none uppercase">
+                                2026 Formula Kite
+                                <span className="block text-slate-400 text-[9px] lg:text-[11px] mt-0.5 tracking-widest">World Championships</span>
+                              </h1>
+                              <p className="text-[10px] lg:text-[11px] text-emerald-400 font-bold uppercase mt-1 flex items-center gap-1.5">
+                                <MIcon name="map-pin" size={10} /> {t.subtitle} 🇵🇹 <span className="hidden lg:inline text-slate-500 font-normal ml-1">| {t.subtitleDates}</span>
+                              </p>
+                            </div>
+                          </div>
+                          
+                          {/* Mobile Right Controls */}
+                          <div className="flex items-center gap-2 lg:hidden">
+                            <div className="flex items-center gap-1 bg-white/10 px-2.5 py-1.5 rounded-lg border border-white/5">
+                                <MIcon name="star" size={12} className="text-amber-400" />
+                                <span className="text-xs font-bold text-amber-50">{totalPoints}</span>
+                            </div>
+                            <button onClick={toggleFullscreen} className="p-2 rounded-full hover:bg-white/10 text-white"><MIcon name={isFullscreen ? "minimize" : "maximize"} size={18} /></button>
+                            <button onClick={() => showToast(t.toast1)} className="p-2 rounded-full hover:bg-white/10 text-white relative">
+                                <MIcon name="bell" size={18} /><span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
+                            </button>
+                          </div>
+                      </div>
+                      
+                      {/* Nav Bar */}
+                      <nav className="flex bg-white/5 dark:bg-white/10 p-1.5 rounded-xl border border-white/10 dark:border-white/5 backdrop-blur-md gap-1 overflow-x-auto no-scrollbar pb-1.5 lg:pb-1.5 items-center w-full lg:w-auto">
+                        {[
+                            { id: 'map', icon: 'map', label: t.tabMap },
+                            { id: 'tracking', icon: 'crosshair', label: t.tabTracking, alert: true },
+                            { id: 'results', icon: 'list-ordered', label: t.tabResults },
+                            { id: 'athletes', icon: 'users', label: t.tabAthletes },
+                            { id: 'fans', icon: 'tv', label: t.tabFans },
+                            { id: 'schedule', icon: 'calendar', label: t.tabSchedule },
+                            { id: 'ai', icon: 'sparkles', label: t.tabAI },
+                            { id: 'settings', icon: 'settings', label: t.tabSettings }
+                        ].map(tab => (
+                            <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`shrink-0 px-3 py-2 lg:px-4 lg:py-2 rounded-lg text-[10px] lg:text-xs font-bold flex items-center gap-1.5 transition-all relative ${activeTab === tab.id ? 'bg-emerald-500 text-white shadow-lg' : 'text-slate-300 hover:text-white hover:bg-white/10'}`}>
+                                <MIcon name={tab.icon} size={14} className={tab.id === 'ai' && activeTab === 'ai' ? 'animate-pulse' : ''} /> {tab.label}
+                                {tab.alert && <span className="absolute top-1 right-1 w-1.5 h-1.5 bg-red-500 rounded-full animate-ping"></span>}
+                            </button>
+                        ))}
+                        
+                        {/* Desktop Side Controls */}
+                        <div className="hidden lg:flex items-center gap-2 ml-2 pl-3 border-l border-white/10">
+                            <div className="flex items-center gap-1.5 bg-white/10 px-3 py-1.5 rounded-lg border border-white/5 mr-1" title="Kite Pass Points">
+                                <MIcon name="star" size={14} className="text-amber-400" />
+                                <span className="text-sm font-black text-amber-50">{totalPoints}</span>
+                            </div>
+                            <button onClick={toggleFullscreen} className="p-2 rounded-lg hover:bg-white/10 text-slate-300 hover:text-white transition-colors" title="Fullscreen"><MIcon name={isFullscreen ? "minimize" : "maximize"} size={16} /></button>
+                            <button onClick={() => showToast(t.toast1)} className="p-2 rounded-lg hover:bg-white/10 text-slate-300 hover:text-white relative"><MIcon name="bell" size={16} /><span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full animate-pulse"></span></button>
+                        </div>
+                      </nav>
+                  </div>
+                </header>
+
+                {/* === CONTEÚDO PRINCIPAL (Roteador Manual) === */}
+                <div className={`flex-1 flex overflow-hidden ${activeTab === 'map' || activeTab === 'tracking' ? 'flex-col lg:flex-row' : 'flex-col'}`}>
+                  
+                  {/* 1️⃣ MAPA GOOGLE EARTH (LEAFLET + KML DATA) */}
+                  {activeTab === 'map' ? (
+                    <>
+                      <main className="flex-none h-[45vh] lg:h-auto lg:flex-1 relative overflow-hidden flex items-center justify-center p-0 lg:p-4 bg-slate-900 transition-colors duration-300">
+                        <div className={`relative w-full h-full lg:rounded-[2.5rem] shadow-2xl overflow-hidden ${isDarkMode ? 'brightness-75 saturate-150 contrast-125' : ''}`}>
+                          
+                          {/* LEAFLET MAP CONTAINER */}
+                          <div id="real-map" className="w-full h-full absolute inset-0 z-10"></div>
+
+                          {/* Botão de Ativação AR Overlay no mapa */}
+                          <div className="absolute bottom-6 right-4 lg:bottom-8 lg:right-8 z-30">
+                            <button onClick={() => setShowAR(true)} className="bg-slate-900 dark:bg-emerald-600 text-white px-4 py-3 lg:px-5 lg:py-4 rounded-2xl shadow-[0_10px_25px_rgba(0,0,0,0.5)] hover:scale-105 transition-transform flex items-center gap-2 border border-white/20 font-black text-xs lg:text-sm group">
+                                <div className="w-2 h-2 bg-emerald-400 rounded-full animate-ping mr-1"></div>
+                                <MIcon name="scan" size={18} className="group-hover:rotate-90 transition-transform duration-500" />
+                                {t.arBtn}
+                            </button>
+                          </div>
+                        </div>
+                      </main>
+
+                      <aside className="flex-1 lg:flex-none w-full lg:w-[420px] bg-white dark:bg-slate-900 border-t lg:border-t-0 lg:border-l border-slate-200 dark:border-slate-800 shadow-[0_-10px_20px_rgba(0,0,0,0.05)] lg:shadow-2xl flex flex-col z-20 overflow-hidden transition-colors duration-300">
+                        <div className="p-2 lg:p-3 bg-slate-50 dark:bg-slate-800 flex gap-1.5 border-b border-slate-100 dark:border-slate-700 overflow-x-auto no-scrollbar shrink-0 transition-colors">
+                          {[{ id: 'all', label: t.filterAll }, { id: 'race', label: t.filterRace }, { id: 'logistics', label: t.filterLogistics }, { id: 'fanzone', label: t.filterFanzone }].map(f => {
+                            const isActive = activeFilters.includes(f.id);
+                            return (
+                              <button key={f.id} onClick={() => toggleFilter(f.id)} className={`shrink-0 px-4 py-2 lg:flex-1 lg:px-0 rounded-lg lg:rounded-xl text-[10px] font-black uppercase tracking-wider transition-all duration-200 ${isActive ? 'bg-emerald-500 text-white shadow-md lg:scale-105' : 'bg-white dark:bg-slate-900 text-slate-400 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700'}`}>
+                                {f.label}
+                              </button>
+                            );
+                          })}
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto p-4 lg:p-6 scroll-smooth">
+                          {selectedPoint ? (
+                            <div className="animate-in slide-in-from-right-8 duration-300">
+                              <button onClick={() => { setSelectedPoint(null); if(window.leafletMap) window.leafletMap.setView([41.679, -8.840], 14); }} className="group flex items-center gap-2 text-[10px] font-black text-emerald-600 dark:text-emerald-400 mb-4 lg:mb-8 tracking-widest uppercase hover:text-emerald-700 dark:hover:text-emerald-300 transition-colors">
+                                <span className="p-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-900/30 group-hover:bg-emerald-100 dark:group-hover:bg-emerald-900/50 transition-colors">←</span>
+                                {t.backBtn}
+                              </button>
+                              
+                              <div className="flex items-center gap-4 mb-4 lg:mb-6">
+                                <div className={`relative w-12 h-12 lg:w-16 lg:h-16 shrink-0 rounded-xl lg:rounded-3xl ${selectedPoint.twColor} text-white flex items-center justify-center shadow-lg transform lg:-rotate-3`}>
+                                  {React.cloneElement(selectedPoint.icon, { className: "w-6 h-6 lg:w-8 lg:h-8" })}
+                                </div>
+                                <div>
+                                  <div className="inline-block px-2.5 py-1 bg-slate-100 dark:bg-slate-800 rounded-md text-[9px] lg:text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1.5 transition-colors">
+                                    {selectedPoint.type === 'race' ? (lang==='pt'?'Competição':'Race') : selectedPoint.type === 'logistics' ? 'Logistics' : 'Public'}
+                                  </div>
+                                  <h2 className="text-xl lg:text-3xl font-black text-slate-800 dark:text-white leading-tight transition-colors">{selectedPoint.name}</h2>
+                                </div>
+                              </div>
+
+                              <p className="text-slate-600 dark:text-slate-300 text-xs lg:text-sm leading-relaxed mb-4 transition-colors">{selectedPoint.description}</p>
+                              
+                              {selectedPoint.hasQR && (
+                                <div className="mb-6 bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 border border-amber-200 dark:border-amber-800/50 rounded-2xl p-4 transition-all">
+                                    <div className="flex items-center gap-2 mb-3">
+                                        <MIcon name="star" size={16} className="text-amber-500" />
+                                        <h4 className="text-xs font-bold text-amber-900 dark:text-amber-400 uppercase tracking-widest">Kite Pass Gamification</h4>
+                                    </div>
+                                    {!checkins.includes(selectedPoint.id) ? (
+                                        <button onClick={() => handleCheckin(selectedPoint.id)} className="w-full bg-amber-500 hover:bg-amber-600 text-white font-black text-xs py-3 rounded-xl flex items-center justify-center gap-2 shadow-sm transition-colors">
+                                            <MIcon name="scan" size={16} /> {lang === 'pt' ? 'Fazer Check-in Local' : 'Location Check-in'}
+                                        </button>
+                                    ) : (
+                                        <div className="w-full bg-white/50 dark:bg-slate-900/50 text-amber-600 dark:text-amber-500 font-bold text-xs py-3 rounded-xl flex items-center justify-center gap-2 border border-amber-200/50 dark:border-amber-700/50">
+                                            <MIcon name="check-circle" size={16} /> {lang === 'pt' ? 'Check-in Concluído! (+50 pts)' : 'Check-in Completed! (+50 pts)'}
+                                        </div>
+                                    )}
+                                </div>
+                              )}
+
+                              <div className="space-y-3 lg:space-y-4">
+                                <div className="bg-slate-50 dark:bg-slate-800/50 p-4 lg:p-5 rounded-2xl lg:rounded-3xl border border-slate-100 dark:border-slate-700 flex items-center gap-4 lg:gap-5 transition-colors">
+                                  <div className="p-2.5 lg:p-3 bg-white dark:bg-slate-800 rounded-xl lg:rounded-2xl shadow-sm text-emerald-500 shrink-0">
+                                    <MIcon name="map" className="lg:w-5 lg:h-5" size={18} />
+                                  </div>
+                                  <div>
+                                    <p className="text-[9px] lg:text-[10px] font-black text-slate-400 uppercase tracking-widest">{t.scheduleLabel}</p>
+                                    <p className="text-xs lg:text-sm font-bold text-slate-800 dark:text-slate-200">{t.scheduleDesc}</p>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="animate-in fade-in duration-300 pb-16 lg:pb-0">
+                              <div className="flex items-center justify-between mb-4 lg:mb-6">
+                                <h3 className="text-base lg:text-lg font-black text-slate-800 dark:text-white tracking-tight">{t.poiTitle}</h3>
+                                <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-2 py-1 lg:px-3 lg:py-1.5 rounded-md lg:rounded-lg text-[9px] lg:text-[10px] font-black transition-colors">
+                                  <MIcon name="map-pin" size={10} className="lg:w-3 lg:h-3" /> {filteredLocations.length} {t.locationsCount}
+                                </div>
+                              </div>
+                              <div className="space-y-2 lg:space-y-3">
+                                {filteredLocations.map(loc => (
+                                  <button 
+                                    key={loc.id} 
+                                    onClick={() => setSelectedPoint(loc)}
+                                    className="w-full p-3 lg:p-4 rounded-xl lg:rounded-3xl border border-slate-100 dark:border-slate-700 hover:border-emerald-300 dark:hover:border-emerald-600 hover:shadow-md transition-all duration-300 flex items-center gap-3 lg:gap-4 group bg-white dark:bg-slate-800 hover:bg-emerald-50/20 dark:hover:bg-slate-700 text-left relative overflow-hidden"
+                                  >
+                                    <div className={`w-10 h-10 lg:w-12 lg:h-12 rounded-lg lg:rounded-2xl ${loc.twColor} text-white flex items-center justify-center shadow-sm group-hover:scale-110 lg:group-hover:-rotate-3 transition-transform duration-300 shrink-0`}>
+                                      {React.cloneElement(loc.icon, { className: "w-5 h-5 lg:w-5 lg:h-5" })}
+                                    </div>
+                                    <div className="overflow-hidden flex-1 z-10">
+                                      <h4 className="font-bold text-xs lg:text-sm text-slate-800 dark:text-slate-100 truncate group-hover:text-emerald-700 dark:group-hover:text-emerald-400 transition-colors">{loc.name}</h4>
+                                      <p className="text-[9px] lg:text-[10px] text-slate-400 dark:text-slate-500 uppercase tracking-wider font-semibold mt-0.5 lg:mt-1 truncate">
+                                        {loc.type === 'race' ? (lang==='pt'?'Competição':'Race') : loc.type === 'logistics' ? 'Logistics' : 'Public'}
+                                      </p>
+                                    </div>
+                                    <div className="text-slate-300 dark:text-slate-600 group-hover:text-emerald-500 group-hover:translate-x-1 transition-all z-10">
+                                      →
+                                    </div>
+                                    {loc.hasQR && checkins.includes(loc.id) && (
+                                        <div className="absolute right-0 top-0 bottom-0 w-1 bg-amber-400"></div>
+                                    )}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </aside>
+                    </>
+                  ) : activeTab === 'tracking' ? (
+                      /* 2️⃣ LIVE TRACKING VIEW (Mantém SVG 2D Simplificado) */
+                      <>
+                        <main className="flex-none h-[45vh] lg:h-auto lg:flex-1 bg-sky-50 dark:bg-slate-900 relative overflow-hidden flex items-center justify-center p-2 lg:p-8 transition-colors">
+                            <div className="absolute top-4 left-4 z-30 flex flex-col gap-2">
+                                <button onClick={() => setMapZoom(z => Math.min(z + 0.3, 2.5))} className="bg-white dark:bg-slate-800 p-2 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:text-emerald-500"><MIcon name="zoom-in" size={20}/></button>
+                                <button onClick={() => setMapZoom(z => Math.max(z - 0.3, 0.5))} className="bg-white dark:bg-slate-800 p-2 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:text-emerald-500"><MIcon name="zoom-out" size={20}/></button>
+                                <button onClick={() => setMapZoom(1)} className="bg-white dark:bg-slate-800 p-2 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 text-[10px] font-black text-slate-700 dark:text-slate-300">1x</button>
+                            </div>
+
+                            <div className="relative w-full h-full max-w-6xl bg-[#eef6fc] rounded-2xl lg:rounded-[2.5rem] shadow-md lg:shadow-2xl overflow-hidden ring-4 lg:ring-8 ring-emerald-500/30 dark:ring-slate-800">
+                                <div className="w-full h-full map-zoom-container" style={{ transform: `scale(${mapZoom})` }}>
+                                    <svg viewBox="0 0 1000 600" className="absolute inset-0 w-full h-full object-cover lg:object-fill" preserveAspectRatio="none">
+                                        <rect width="1000" height="600" fill="#0ea5e9" opacity="0.15" />
+                                        <path d="M 400 0 L 1000 0 L 1000 280 L 750 280 L 680 250 L 550 200 Z" fill="#f8fafc" />
+                                        <path d="M 250 600 Q 400 380 700 340 L 1000 340 L 1000 600 Z" fill="#faedd2" />
+                                        <path d="M 550 200 Q 450 230 350 320 L 330 310 Q 430 210 540 180 Z" fill="#64748b" />
+                                        <path d="M 200 350 L 300 250 L 400 350 L 300 450 Z" fill="none" stroke="#10b981" strokeWidth="2" strokeDasharray="5,5" className="animate-pulse" />
+                                        <circle cx="200" cy="350" r="4" fill="#f97316" />
+                                        <circle cx="400" cy="350" r="4" fill="#f97316" />
+                                    </svg>
+                                    
+                                    {liveAthletes.map(a => (
+                                        <div key={a.id} className="absolute transform -translate-x-1/2 -translate-y-1/2 flex flex-col items-center transition-all duration-1000 ease-linear z-20" style={{ left: `${a.x}%`, top: `${a.y}%` }}>
+                                            <div className="bg-slate-900 text-white text-[9px] font-black px-1.5 py-0.5 rounded shadow-lg whitespace-nowrap mb-1 flex items-center gap-1">
+                                                <span>{a.flag}</span> {a.sail}
+                                            </div>
+                                            <div className="w-3 h-3 bg-red-500 rounded-full border-2 border-white shadow-[0_0_10px_rgba(239,68,68,0.8)]"></div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </main>
+
+                        <aside className="flex-1 lg:flex-none w-full lg:w-[420px] bg-white dark:bg-slate-900 border-t lg:border-t-0 lg:border-l border-slate-200 dark:border-slate-800 flex flex-col z-20">
+                            <div className="p-4 lg:p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-800/50">
+                                <div>
+                                    <h2 className="text-xl font-black text-slate-800 dark:text-white tracking-tight flex items-center gap-2">
+                                        <span className="w-2.5 h-2.5 bg-red-500 rounded-full animate-ping"></span> Live Leaderboard
+                                    </h2>
+                                    <p className="text-[10px] text-slate-500">Race 3 • Target: 12m</p>
+                                </div>
+                                <button onClick={exportCSV} className="bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-400 px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-2 hover:bg-emerald-200 transition-colors">
+                                    <MIcon name="download" size={14} /> <span className="hidden md:inline">{t.trackExport}</span>
+                                </button>
+                            </div>
+
+                            <div className="flex-1 overflow-y-auto p-4">
+                                <table className="w-full text-left">
+                                    <thead>
+                                        <tr className="text-[10px] text-slate-400 uppercase tracking-widest border-b border-slate-100 dark:border-slate-800">
+                                            <th className="pb-3 pl-2">{t.trackPos}</th>
+                                            <th className="pb-3">{t.trackName}</th>
+                                            <th className="pb-3">{t.trackNat}</th>
+                                            <th className="pb-3 text-right pr-2">{t.trackSpeed}</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {liveAthletes.sort((a,b)=>a.pos-b.pos).map(a => (
+                                            <tr key={a.id} className="border-b border-slate-50 dark:border-slate-800/50 hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
+                                                <td className="py-4 pl-2 font-black text-lg text-slate-300 dark:text-slate-600">{a.pos}</td>
+                                                <td className="py-4 font-bold text-sm text-slate-800 dark:text-white">{a.name}</td>
+                                                <td className="py-4"><span className="bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded text-xs font-bold">{a.flag} {a.country}</span></td>
+                                                <td className="py-4 text-right pr-2 text-emerald-600 dark:text-emerald-400 font-mono font-bold">{a.speed}kt</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </aside>
+                      </>
+                  ) : activeTab === 'results' ? (
+                      /* 🏆 SECÇÃO DE RESULTADOS PROFISSIONAIS */
+                      <div className="flex-1 overflow-y-auto bg-slate-50 dark:bg-slate-950 p-4 lg:p-12 animate-in fade-in duration-500">
+                          <div className="max-w-6xl mx-auto">
+                              <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
+                                  <h2 className="text-3xl font-black text-slate-900 dark:text-white uppercase flex items-center gap-3">
+                                      <MIcon name="list-ordered" className="text-emerald-500" size={32}/> {t.tabResults}
+                                  </h2>
+                                  <div className="flex bg-white dark:bg-slate-900 p-1.5 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-x-auto no-scrollbar shrink-0">
+                                      <button onClick={() => setResTab('overall')} className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${resTab === 'overall' ? 'bg-slate-800 dark:bg-slate-700 text-white' : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white'}`}>{t.resOverall}</button>
+                                      <button onClick={() => setResTab('races')} className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${resTab === 'races' ? 'bg-slate-800 dark:bg-slate-700 text-white' : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white'}`}>{t.resRaces}</button>
+                                      <button onClick={() => setResTab('medal')} className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${resTab === 'medal' ? 'bg-amber-500 text-white' : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white'}`}>{t.resMedal}</button>
+                                  </div>
+                              </div>
+
+                              <div className="bg-white dark:bg-slate-900 rounded-[1.5rem] shadow-xl border border-slate-100 dark:border-slate-800 overflow-hidden overflow-x-auto">
+                                  <table className="w-full text-left min-w-[600px]">
+                                      <thead>
+                                          <tr className="bg-slate-50 dark:bg-slate-800/50 text-[10px] text-slate-500 dark:text-slate-400 uppercase tracking-widest border-b border-slate-200 dark:border-slate-700">
+                                              <th className="p-4 pl-6 w-16">{t.trackPos}</th>
+                                              <th className="p-4 w-24">{t.trackNat}</th>
+                                              <th className="p-4">{t.trackName}</th>
+                                              {resTab === 'overall' && <th className="p-4 text-right pr-8">{t.resPts}</th>}
+                                              {resTab === 'races' && (
+                                                  <React.Fragment>
+                                                      <th className="p-4 text-center">R1</th><th className="p-4 text-center">R2</th><th className="p-4 text-center">R3</th><th className="p-4 text-center">R4</th><th className="p-4 text-right pr-6">NET</th>
+                                                  </React.Fragment>
+                                              )}
+                                              {resTab === 'medal' && <th className="p-4 text-right pr-8">STATUS</th>}
+                                          </tr>
+                                      </thead>
+                                      <tbody>
+                                          {(resTab === 'medal' ? resultsMedal : resultsOverall).map((ath, idx) => (
+                                              <tr key={idx} className="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors group">
+                                                  <td className="p-4 pl-6 font-black text-lg text-slate-400 dark:text-slate-500 group-hover:text-emerald-500">
+                                                      {ath.pos === 1 && <MIcon name="trophy" size={20} className="text-yellow-500" />}
+                                                      {ath.pos === 2 && <MIcon name="medal" size={20} className="text-slate-400" />}
+                                                      {ath.pos === 3 && <MIcon name="medal" size={20} className="text-amber-600" />}
+                                                      {ath.pos > 3 && ath.pos}
+                                                  </td>
+                                                  <td className="p-4"><span className="bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-md text-xs font-bold border border-slate-200 dark:border-slate-700">{ath.flag} {ath.nat}</span></td>
+                                                  <td className="p-4 font-bold text-sm lg:text-base text-slate-800 dark:text-white">{ath.name}</td>
+                                                  
+                                                  {resTab === 'overall' && <td className="p-4 text-right pr-8 font-black text-lg text-emerald-600 dark:text-emerald-400">{ath.net}</td>}
+                                                  
+                                                  {resTab === 'races' && (
+                                                      <React.Fragment>
+                                                          <td className={`p-4 text-center text-sm font-medium ${ath.r1.toString().includes('(') ? 'text-red-400 line-through' : 'text-slate-600 dark:text-slate-300'}`}>{ath.r1}</td>
+                                                          <td className={`p-4 text-center text-sm font-medium ${ath.r2.toString().includes('(') ? 'text-red-400 line-through' : 'text-slate-600 dark:text-slate-300'}`}>{ath.r2}</td>
+                                                          <td className={`p-4 text-center text-sm font-medium ${ath.r3.toString().includes('(') ? 'text-red-400 line-through' : 'text-slate-600 dark:text-slate-300'}`}>{ath.r3}</td>
+                                                          <td className={`p-4 text-center text-sm font-medium ${ath.r4.toString().includes('(') ? 'text-red-400 line-through' : 'text-slate-600 dark:text-slate-300'}`}>{ath.r4}</td>
+                                                          <td className="p-4 text-right pr-6 font-black text-emerald-600 dark:text-emerald-400">{ath.net}</td>
+                                                      </React.Fragment>
+                                                  )}
+
+                                                  {resTab === 'medal' && (
+                                                      <td className="p-4 text-right pr-8">
+                                                          <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${
+                                                              ath.status === 'WINNER' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' :
+                                                              ath.status === 'FINALIST' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
+                                                              'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
+                                                          }`}>{ath.status}</span>
+                                                      </td>
+                                                  )}
+                                              </tr>
+                                          ))}
+                                      </tbody>
+                                  </table>
+                              </div>
+                          </div>
+                      </div>
+                  ) : activeTab === 'athletes' ? (
+                      /* 🏄 SECÇÃO ATLETAS */
+                      <div className="flex-1 overflow-y-auto bg-slate-50 dark:bg-slate-950 p-4 lg:p-12 animate-in fade-in duration-500">
+                          <div className="max-w-7xl mx-auto">
+                              <h2 className="text-3xl font-black text-slate-900 dark:text-white uppercase mb-8 flex items-center gap-3">
+                                  <MIcon name="users" className="text-emerald-500" size={32}/> {t.tabAthletes} Top 10
+                              </h2>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                                  {athleteProfiles.map((ath, idx) => (
+                                      <div key={idx} className="bg-white dark:bg-slate-900 rounded-[2rem] p-6 shadow-xl border border-slate-100 dark:border-slate-800 flex flex-col relative group hover:-translate-y-2 transition-transform">
+                                          <div className="absolute top-4 right-4 bg-slate-900 dark:bg-emerald-500 text-white font-mono px-2.5 py-1 rounded-lg text-xs font-black shadow-md flex items-center gap-1">
+                                              <MIcon name="wind" size={12} /> {ath.sail}
+                                          </div>
+                                          
+                                          <div className="flex flex-col items-center text-center mt-4">
+                                              <div className="w-20 h-20 lg:w-24 lg:h-24 rounded-full bg-slate-100 dark:bg-slate-800 mb-4 flex items-center justify-center text-4xl shadow-inner border-4 border-emerald-500/20 group-hover:border-emerald-500 transition-colors">
+                                                  {ath.flag}
+                                              </div>
+                                              <h3 className="text-lg lg:text-xl font-black text-slate-800 dark:text-white leading-tight">{ath.name}</h3>
+                                              <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-widest">{ath.nat}</p>
+                                              
+                                              <span className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-3 py-1 rounded-full text-[10px] lg:text-xs font-bold mt-3 border border-slate-200 dark:border-slate-700">
+                                                  {t.athRank}: #{ath.rank}
+                                              </span>
+                                              
+                                              <p className="text-xs lg:text-sm text-slate-500 dark:text-slate-400 mt-4 font-medium leading-snug">{ath.desc}</p>
+                                          </div>
+
+                                          <div className="mt-auto pt-5 w-full border-t border-slate-100 dark:border-slate-800 flex flex-col gap-2">
+                                              <div className="flex justify-between items-center bg-slate-50 dark:bg-slate-800/50 px-3 py-2 rounded-lg">
+                                                  <span className="text-[9px] text-slate-400 uppercase tracking-widest font-bold">Sponsor</span>
+                                                  <span className="text-xs font-bold text-slate-700 dark:text-slate-200">{ath.gear}</span>
+                                              </div>
+                                              <div className="flex justify-between items-center bg-sky-50 dark:bg-sky-900/20 px-3 py-2 rounded-lg border border-sky-100 dark:border-sky-900/30">
+                                                  <span className="text-[9px] text-sky-600 dark:text-sky-400 uppercase tracking-widest font-bold">{t.athKite}</span>
+                                                  <span className="text-[11px] font-black text-sky-800 dark:text-sky-300">{ath.kites}</span>
+                                              </div>
+                                          </div>
+                                      </div>
+                                  ))}
+                              </div>
+                          </div>
+                      </div>
+                  ) : activeTab === 'fans' ? (
+                      /* 6️⃣ MODO ESPECTADOR (FAN EXPERIENCE) */
+                      <div className="flex-1 overflow-y-auto bg-slate-50 dark:bg-slate-950 p-4 lg:p-12 animate-in fade-in duration-500">
+                          <div className="max-w-5xl mx-auto space-y-8">
+                              <div className="w-full bg-black rounded-[2rem] aspect-video relative overflow-hidden shadow-2xl group flex items-center justify-center border border-slate-800 cursor-pointer">
+                                  <img src="https://images.unsplash.com/photo-1502680390469-be75c86b636f?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80" className="absolute inset-0 w-full h-full object-cover opacity-60 group-hover:opacity-40 transition-opacity" alt="Kite Surf" />
+                                  <div className="absolute top-6 left-6 bg-red-600 text-white px-3 py-1.5 rounded-lg text-xs font-black uppercase tracking-widest flex items-center gap-2"><span className="w-2 h-2 bg-white rounded-full animate-pulse"></span> {t.fansLive}</div>
+                                  <div className="w-20 h-20 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center border border-white/40 text-white group-hover:scale-110 transition-transform shadow-2xl">
+                                      <MIcon name="play" size={32} className="ml-2" />
+                                  </div>
+                              </div>
+
+                              <h2 className="text-2xl font-black text-slate-900 dark:text-white uppercase pt-4">{t.fansGuide}</h2>
+                              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                  <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
+                                      <MIcon name="coffee" className="text-orange-500 mb-4 w-8 h-8" />
+                                      <h4 className="font-bold text-slate-800 dark:text-white">{t.guideFood}</h4>
+                                      <p className="text-sm text-slate-500 mt-2">{t.guideFoodDesc}</p>
+                                  </div>
+                                  <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
+                                      <MIcon name="car" className="text-blue-500 mb-4 w-8 h-8" />
+                                      <h4 className="font-bold text-slate-800 dark:text-white">{t.guidePark}</h4>
+                                      <p className="text-sm text-slate-500 mt-2">{t.guideParkDesc}</p>
+                                  </div>
+                                  <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
+                                      <MIcon name="camera" className="text-emerald-500 mb-4 w-8 h-8" />
+                                      <h4 className="font-bold text-slate-800 dark:text-white">{t.guideView}</h4>
+                                      <p className="text-sm text-slate-500 mt-2">{t.guideViewDesc}</p>
+                                  </div>
+                              </div>
+                          </div>
+                      </div>
+                  ) : activeTab === 'schedule' ? (
+                    <div className="flex-1 overflow-y-auto bg-slate-50 dark:bg-slate-950 p-4 lg:p-12 animate-in fade-in duration-500 transition-colors">
+                      <div className="max-w-4xl mx-auto pb-8">
+                        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 lg:gap-6 mb-6 lg:mb-12 bg-white dark:bg-slate-900 p-6 lg:p-8 rounded-2xl lg:rounded-[2.5rem] shadow-sm border border-slate-100 dark:border-slate-800 transition-colors">
+                          <div>
+                            <h2 className="text-2xl lg:text-4xl font-black text-slate-900 dark:text-white tracking-tighter uppercase leading-none">
+                              {t.schedTitle}
+                            </h2>
+                          </div>
+                          <div className="inline-flex self-start md:self-auto items-center gap-2 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-3 py-1.5 lg:px-4 lg:py-2 rounded-lg lg:rounded-xl font-bold text-xs lg:text-sm border border-blue-100 dark:border-blue-800">
+                            <MIcon name="info" size={16} className="lg:w-[18px] lg:h-[18px]" /> {t.schedDoc}
+                          </div>
+                        </div>
+
+                        <div className="space-y-3 lg:space-y-4">
+                          {eventSchedule.map((item, idx) => (
+                            <div key={idx} className="bg-white dark:bg-slate-900 p-5 lg:p-6 rounded-2xl lg:rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-md transition-shadow flex flex-col md:flex-row md:items-center gap-3 lg:gap-6">
+                              <div className="w-auto md:w-24 shrink-0 flex items-center justify-between md:block">
+                                <span className="text-lg lg:text-2xl font-black text-slate-800 dark:text-slate-100 md:text-slate-300 dark:md:text-slate-700">{item.date}</span>
+                                <span className={`md:hidden inline-block px-3 py-1 rounded-md text-[9px] font-black uppercase tracking-widest ${
+                                  item.status === 'race' ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300' :
+                                  item.status === 'final' ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300' :
+                                  item.status === 'setup' ? 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400' :
+                                  'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300'
+                                }`}>
+                                  {item.status}
+                                </span>
+                              </div>
+                              <div className="flex-1 md:border-l-2 border-slate-100 dark:border-slate-800 md:pl-6">
+                                <h4 className="font-black text-sm lg:text-lg text-slate-800 dark:text-slate-100">{item.activity}</h4>
+                                <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400 text-xs lg:text-sm mt-1 lg:mt-2 font-medium">
+                                  <MIcon name="clock" size={14} className="text-emerald-500 lg:w-4 lg:h-4" /> {item.time}
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+
+                        <div className="mt-8 lg:mt-12 grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-6">
+                          <div className="bg-slate-900 dark:bg-black text-white p-6 lg:p-8 rounded-2xl lg:rounded-[2.5rem] shadow-xl relative overflow-hidden border border-transparent dark:border-slate-800">
+                            <h5 className="font-black text-[10px] lg:text-xs text-emerald-400 uppercase tracking-widest mb-4 lg:mb-6 flex items-center gap-2">
+                              <MIcon name="check-circle" size={14} className="lg:w-4 lg:h-4" /> {t.schedRulesTitle}
+                            </h5>
+                            <div className="space-y-4 lg:space-y-5 relative z-10">
+                              <div>
+                                <span className="text-[10px] lg:text-xs font-bold text-slate-400">Target Time (Opening)</span>
+                                <p className="text-xl lg:text-2xl font-black">12 {lang === 'pt' ? 'minutos' : 'minutes'}</p>
+                              </div>
+                              <div className="h-px bg-white/10 w-full"></div>
+                              <div>
+                                <span className="text-[10px] lg:text-xs font-bold text-slate-400">Target Time (Medal Series)</span>
+                                <p className="text-xl lg:text-2xl font-black">7 {lang === 'pt' ? 'minutos' : 'minutes'}</p>
+                              </div>
+                            </div>
+                            <MIcon name="waves" size={128} className="absolute -right-4 -bottom-4 w-24 h-24 lg:w-32 lg:h-32 text-white/5" />
+                          </div>
+
+                          <div className="bg-white dark:bg-slate-900 p-6 lg:p-8 rounded-2xl lg:rounded-[2.5rem] border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden flex flex-col justify-between transition-colors">
+                            <div>
+                              <h5 className="font-black text-[10px] lg:text-xs text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-4 lg:mb-6">{t.schedRulesDesc}</h5>
+                              <ul className="space-y-3 lg:space-y-4 text-xs lg:text-sm font-semibold text-slate-600 dark:text-slate-300 relative z-10">
+                                <li className="flex gap-2 lg:gap-3"><span className="text-emerald-500">•</span><span>{t.rule1}</span></li>
+                                <li className="flex gap-2 lg:gap-3"><span className="text-emerald-500">•</span><span>{t.rule2}</span></li>
+                                <li className="flex gap-2 lg:gap-3"><span className="text-emerald-500">•</span><span>{t.rule3}</span></li>
+                              </ul>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ) : activeTab === 'ai' ? (
+                      <div className="flex-1 flex flex-col bg-slate-100 dark:bg-slate-950 overflow-hidden animate-in fade-in duration-500 transition-colors">
+                        <div className="bg-emerald-900 dark:bg-emerald-950 text-white p-4 lg:p-6 shadow-md shrink-0 border-b border-emerald-800 z-10">
+                          <div className="max-w-4xl mx-auto">
+                            <h2 className="text-lg lg:text-2xl font-black tracking-tight flex items-center gap-2 lg:gap-3 text-emerald-100">
+                              <MIcon name="sparkles" size={18} className="text-emerald-400 lg:w-6 lg:h-6" /> {t.aiTitle}
+                            </h2>
+                            <p className="text-emerald-400/80 text-[10px] lg:text-sm font-medium mt-1">{t.aiDisclaimer}</p>
+                          </div>
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto p-3 lg:p-8 space-y-4 lg:space-y-6 scroll-smooth">
+                          <div className="max-w-4xl mx-auto space-y-4 lg:space-y-6 pb-2">
+                            {chatHistory.map((msg, index) => (
+                              <div key={index} className={`flex gap-3 lg:gap-4 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}>
+                                <div className={`w-8 h-8 lg:w-10 lg:h-10 rounded-full flex items-center justify-center shrink-0 shadow-sm ${msg.role === 'user' ? 'bg-slate-800 dark:bg-slate-700 text-white' : 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600 dark:text-emerald-400'}`}>
+                                  <MIcon name={msg.role === 'user' ? 'user' : 'bot'} size={16} className="lg:w-5 lg:h-5" />
+                                </div>
+                                <div className={`px-4 py-3 lg:px-5 lg:py-4 rounded-2xl lg:rounded-[2rem] max-w-[85%] text-sm lg:text-base shadow-sm ${
+                                  msg.role === 'user' 
+                                  ? 'bg-slate-800 dark:bg-slate-700 text-white rounded-tr-none' 
+                                  : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 rounded-tl-none border border-slate-100 dark:border-slate-800 leading-relaxed'
+                                }`}>
+                                  {msg.text.split('\n').map((line, i) => (
+                                    <p key={i} className={i !== 0 ? 'mt-1 lg:mt-2' : ''}>{line}</p>
+                                  ))}
+                                </div>
+                              </div>
+                            ))}
+                            
+                            {isTyping && (
+                              <div className="flex gap-3 lg:gap-4">
+                                <div className="w-8 h-8 lg:w-10 lg:h-10 rounded-full bg-emerald-100 dark:bg-slate-900/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 shadow-sm">
+                                  <MIcon name="sparkles" size={16} className="animate-spin-slow lg:w-5 lg:h-5" />
+                                </div>
+                                <div className="px-5 py-3 lg:px-6 lg:py-4 rounded-2xl lg:rounded-[2rem] bg-white dark:bg-slate-900 text-slate-500 rounded-tl-none border border-slate-100 dark:border-slate-800 shadow-sm flex items-center gap-1.5 h-[42px] lg:h-[56px]">
+                                  <div className="w-1.5 h-1.5 lg:w-2 lg:h-2 bg-emerald-400 rounded-full typing-dot" />
+                                  <div className="w-1.5 h-1.5 lg:w-2 lg:h-2 bg-emerald-400 rounded-full typing-dot" />
+                                  <div className="w-1.5 h-1.5 lg:w-2 lg:h-2 bg-emerald-400 rounded-full typing-dot" />
+                                </div>
+                              </div>
+                            )}
+                            <div ref={chatEndRef} />
+                          </div>
+                        </div>
+
+                        <div className="bg-white dark:bg-slate-900 p-3 lg:p-4 border-t border-slate-200 dark:border-slate-800 shrink-0 pb-safe transition-colors z-10">
+                          <div className="max-w-4xl mx-auto relative flex items-center">
+                            <input 
+                              type="text" 
+                              value={chatInput}
+                              onChange={(e) => setChatInput(e.target.value)}
+                              onKeyDown={(e) => e.key === 'Enter' && handleSendChat()}
+                              placeholder={t.aiPlaceholder}
+                              className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-white rounded-full py-3 lg:py-4 pl-4 lg:pl-6 pr-14 lg:pr-16 text-sm lg:text-base outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all shadow-inner"
+                              disabled={isTyping}
+                            />
+                            <button 
+                              onClick={() => handleSendChat()}
+                              disabled={isTyping || !chatInput.trim()}
+                              className="absolute right-1.5 lg:right-2 w-10 h-10 lg:w-11 lg:h-11 rounded-full bg-emerald-500 text-white flex items-center justify-center hover:bg-emerald-600 disabled:opacity-50 disabled:hover:bg-emerald-500 transition-colors shadow-sm"
+                            >
+                              <MIcon name="send" size={16} className={`${chatInput.trim() ? 'ml-1' : ''} lg:w-[18px] lg:h-[18px]`} />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                  ) : (
+                      /* Settings */
+                      <div className="flex-1 overflow-y-auto bg-slate-50 dark:bg-slate-950 p-4 lg:p-12 animate-in fade-in duration-500 transition-colors">
+                          <div className="max-w-4xl mx-auto pb-12">
+                              <h2 className="text-2xl lg:text-3xl font-black mb-8 dark:text-white mt-4">{t.settingsTitle}</h2>
+                              
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                  {/* Coluna 1: Definições da App */}
+                                  <div className="space-y-6">
+                                      <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-800 transition-colors">
+                                          <h3 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-4 flex items-center gap-2">
+                                              <MIcon name="globe" size={16} /> {t.settingsLang}
+                                          </h3>
+                                          <div className="grid grid-cols-2 gap-3">
+                                              <button onClick={() => setLang('pt')} className={`py-3 rounded-xl font-bold text-sm transition-all border-2 ${lang === 'pt' ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 shadow-sm' : 'border-transparent bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'}`}>🇵🇹 Português</button>
+                                              <button onClick={() => setLang('en')} className={`py-3 rounded-xl font-bold text-sm transition-all border-2 ${lang === 'en' ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 shadow-sm' : 'border-transparent bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'}`}>🇬🇧 English</button>
+                                          </div>
+                                      </div>
+
+                                      <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-800 transition-colors">
+                                          <h3 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-4 flex items-center gap-2">
+                                              <MIcon name="sun" size={16} /> {t.settingsTheme}
+                                          </h3>
+                                          <div className="grid grid-cols-2 gap-3">
+                                              <button onClick={() => setIsDarkMode(false)} className={`py-3 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 border-2 ${!isDarkMode ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 shadow-sm' : 'border-transparent bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'}`}>
+                                                  <MIcon name="sun" size={16} /> {t.themeLight}
+                                              </button>
+                                              <button onClick={() => setIsDarkMode(true)} className={`py-3 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 border-2 ${isDarkMode ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 shadow-sm' : 'border-transparent bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'}`}>
+                                                  <MIcon name="moon" size={16} /> {t.themeDark}
+                                              </button>
+                                          </div>
+                                      </div>
+                                  </div>
+
+                                  {/* Coluna 2: Parceiros Institucionais */}
+                                  <div className="bg-white dark:bg-slate-900 p-6 lg:p-8 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-800 transition-colors">
+                                      <h3 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-6 flex items-center gap-2">
+                                          <MIcon name="building" size={16} /> {t.settingsPartners}
+                                      </h3>
+                                      
+                                      <div className="space-y-4">
+                                          <a href="https://fpvela.pt" target="_blank" rel="noopener noreferrer" className="flex items-center gap-4 p-3 rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group border border-transparent hover:border-slate-200 dark:hover:border-slate-700">
+                                              <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-xl flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                                                  <MIcon name="flag" size={24} />
+                                              </div>
+                                              <div className="flex-1">
+                                                  <h4 className="font-bold text-sm text-slate-800 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">Federação Portuguesa de Vela</h4>
+                                                  <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-tight mt-0.5">{t.partnerFPVDesc}</p>
+                                              </div>
+                                              <MIcon name="external-link" size={16} className="text-slate-300 dark:text-slate-600 group-hover:text-blue-500" />
+                                          </a>
+
+                                          <a href="https://kiteclasses.org" target="_blank" rel="noopener noreferrer" className="flex items-center gap-4 p-3 rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group border border-transparent hover:border-slate-200 dark:hover:border-slate-700">
+                                              <div className="w-12 h-12 bg-sky-100 dark:bg-sky-900/30 text-sky-600 dark:text-sky-400 rounded-xl flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                                                  <MIcon name="wind" size={24} />
+                                              </div>
+                                              <div className="flex-1">
+                                                  <h4 className="font-bold text-sm text-slate-800 dark:text-white group-hover:text-sky-600 dark:group-hover:text-sky-400 transition-colors">IKA</h4>
+                                                  <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-tight mt-0.5">{t.partnerIKADesc}</p>
+                                              </div>
+                                              <MIcon name="external-link" size={16} className="text-slate-300 dark:text-slate-600 group-hover:text-sky-500" />
+                                          </a>
+
+                                          <a href="https://sailing.org" target="_blank" rel="noopener noreferrer" className="flex items-center gap-4 p-3 rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group border border-transparent hover:border-slate-200 dark:hover:border-slate-700">
+                                              <div className="w-12 h-12 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-xl flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                                                  <MIcon name="compass" size={24} />
+                                              </div>
+                                              <div className="flex-1">
+                                                  <h4 className="font-bold text-sm text-slate-800 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">World Sailing</h4>
+                                                  <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-tight mt-0.5">{t.partnerWSDesc}</p>
+                                              </div>
+                                              <MIcon name="external-link" size={16} className="text-slate-300 dark:text-slate-600 group-hover:text-indigo-500" />
+                                          </a>
+
+                                          <a href="https://modoexpertoschool.com/kitesurf/" target="_blank" rel="noopener noreferrer" className="flex items-center gap-4 p-3 rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group border border-transparent hover:border-slate-200 dark:hover:border-slate-700">
+                                              <div className="w-12 h-12 bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 rounded-xl flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                                                  <MIcon name="star" size={24} />
+                                              </div>
+                                              <div className="flex-1">
+                                                  <h4 className="font-bold text-sm text-slate-800 dark:text-white group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors">Modo Experto School</h4>
+                                                  <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-tight mt-0.5">{t.partnerModoDesc}</p>
+                                              </div>
+                                              <MIcon name="external-link" size={16} className="text-slate-300 dark:text-slate-600 group-hover:text-amber-500" />
+                                          </a>
+                                      </div>
+                                  </div>
+                              </div>
+                          </div>
+                      </div>
+                  )}
+
+                </div>
+              </div>
+            </div>
+          );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
