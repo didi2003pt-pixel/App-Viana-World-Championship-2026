@@ -141,7 +141,8 @@
                 qualifiersLabel: "QUALIFICAÇÕES", finalsLabel: "FINAIS",
                 // Login Strings
                 loginTitle: "Bem-vindo", loginSub: "Insira os seus dados para aceder à App Oficial.",
-                nameLabel: "Nome Completo", emailLabel: "Email", enterBtn: "Aceder à App", entering: "A entrar..."
+                nameLabel: "Nome Completo", emailLabel: "Email", enterBtn: "Aceder à App", entering: "A entrar...",
+                themeLight: "Claro", themeDark: "Escuro"
             },
             en: {
                 officialApp: "Official App", partners: "Official Partners:",
@@ -179,17 +180,13 @@
                 qualifiersLabel: "QUALIFIERS", finalsLabel: "FINAIS",
                 // Login Strings
                 loginTitle: "Welcome", loginSub: "Enter your details to access the Official App.",
-                nameLabel: "Full Name", emailLabel: "Email", enterBtn: "Access App", entering: "Entering..."
+                nameLabel: "Full Name", emailLabel: "Email", enterBtn: "Access App", entering: "Entering...",
+                themeLight: "Light", themeDark: "Dark"
             }
         };
 
-        // Simulação do Service Worker (PWA Placeholder)
-        if ('serviceWorker' in navigator) {
-            console.log("PWA Offline mode ready.");
-        }
-
         const App = () => {
-          // --- ESTADOS DE ACESSO E SPLASH SCREEN ---
+          // --- ESTADOS ---
           const [showSplash, setShowSplash] = useState(true);
           const [splashFadeOut, setSplashFadeOut] = useState(false);
           const [hasAccess, setHasAccess] = useState(false);
@@ -209,34 +206,42 @@
               return () => { clearTimeout(fadeTimer); clearTimeout(removeTimer); };
           }, []);
 
-          // --- SUBMISSÃO DO FORMULÁRIO PARA GOOGLE SHEETS ---
+          // --- SUBMISSÃO FÁCIL E SEM ERROS (FORMSPREE) ---
           const handleLogin = async (e) => {
               e.preventDefault();
               if (!formData.name || !formData.email) return;
 
               setIsSubmitting(true);
 
-              // LINK VERDADEIRO DO APPS SCRIPT COLOCADO AQUI
-              const scriptURL = 'https://script.google.com/macros/s/AKfycbwZngiDcC1a32pQsCLR1_e-Dy0pHuMrevkw8kzAPQmOkm1E8QzG9yV9qX66JVXQ3i7q/exec';
+              // 🔴 LINK DO FORMSPREE COLOCADO AQUI
+              const formspreeURL = 'https://formspree.io/f/mqeynbpl';
 
               try {
-                  const formBody = new FormData();
-                  formBody.append('name', formData.name);
-                  formBody.append('email', formData.email);
+                  // Se já tiver colocado o link do formspree, envia os dados:
+                  if (formspreeURL !== 'COLE_AQUI_O_SEU_LINK_FORMSPREE') {
+                      await fetch(formspreeURL, {
+                          method: 'POST',
+                          headers: {
+                              'Accept': 'application/json',
+                              'Content-Type': 'application/json'
+                          },
+                          body: JSON.stringify({
+                              Nome: formData.name,
+                              Email: formData.email,
+                              DataAcesso: new Date().toLocaleString('pt-PT')
+                          })
+                      });
+                  } else {
+                      // Simula uma espera para dar tempo de ler "A entrar..." se ainda não tiver o link configurado
+                      await new Promise(resolve => setTimeout(resolve, 800));
+                  }
 
-                  // Fazemos o fetch com 'no-cors' para evitar erros de CORS (Cross-Origin)
-                  await fetch(scriptURL, {
-                      method: 'POST',
-                      mode: 'no-cors',
-                      body: formBody
-                  });
-
-                  // Dá acesso e guarda no localStorage
+                  // Guarda o acesso no dispositivo do utilizador
                   localStorage.setItem('vianaKiteAppAccess', 'true');
                   setHasAccess(true);
               } catch (error) {
-                  console.error('Erro ao enviar dados para o Google Sheets:', error);
-                  // Em caso de erro, permitimos o acesso na mesma para não bloquear o utilizador
+                  console.error('Erro de submissão:', error);
+                  // Mesmo que haja um erro sem internet, não bloqueia o utilizador de ver a app
                   localStorage.setItem('vianaKiteAppAccess', 'true');
                   setHasAccess(true);
               } finally {
@@ -297,11 +302,11 @@
 
           // --- DADOS DO EVENTO & SCHEDULE ---
           const eventSchedule = useMemo(() => [
-              { date: '8 Mai', activity: lang === 'pt' ? 'Abertura do Recinto / Registo' : 'Venue Opening / Registration', time: '15:00 - 18:00', status: 'setup', calDates: '20260508T140000Z/20260508T170000Z' },
-              { date: '9 Mai', activity: lang === 'pt' ? 'Inspeção de Equipamento' : 'Equipment Inspection', time: '09:00 - 18:00', status: 'check', calDates: '20260509T080000Z/20260509T170000Z' },
-              { date: '10 Mai', activity: lang === 'pt' ? 'Cerimónia de Abertura' : 'Opening Ceremony', time: '18:00', status: 'event', calDates: '20260510T170000Z/20260510T190000Z' },
-              { date: '11-15 Mai', activity: lang === 'pt' ? 'Opening Series (Qualificação)' : 'Opening Series (Qualifying)', time: '11:00+', status: 'race', calDates: '20260511T100000Z/20260515T170000Z' },
-              { date: '16 Mai', activity: lang === 'pt' ? 'Medal Series & Entrega de Prémios' : 'Medal Series & Prize Giving', time: '12:15 / 18:00', status: 'final', calDates: '20260516T111500Z/20260516T170000Z' },
+              { date: '8 Mai', activity: lang === 'pt' ? 'Abertura do Recinto / Registo' : 'Venue Opening / Registration', time: '15:00 - 18:00', status: 'setup' },
+              { date: '9 Mai', activity: lang === 'pt' ? 'Inspeção de Equipamento' : 'Equipment Inspection', time: '09:00 - 18:00', status: 'check' },
+              { date: '10 Mai', activity: lang === 'pt' ? 'Cerimónia de Abertura' : 'Opening Ceremony', time: '18:00', status: 'event' },
+              { date: '11-15 Mai', activity: lang === 'pt' ? 'Opening Series (Qualificação)' : 'Opening Series (Qualifying)', time: '11:00+', status: 'race' },
+              { date: '16 Mai', activity: lang === 'pt' ? 'Medal Series & Entrega de Prémios' : 'Medal Series & Prize Giving', time: '12:15 / 18:00', status: 'final' },
           ], [lang]);
 
           // --- TRACKING STATE BASEADO EM COORDENADAS REAIS (LAT/LNG) ---
@@ -334,60 +339,8 @@
               a.href = url; a.download = 'viana2026_live_ranking.csv'; a.click();
           };
 
-          // --- FUNÇÕES DE CALENDÁRIO ---
           const exportCalendar = () => {
-              const icsContent = `BEGIN:VCALENDAR
-VERSION:2.0
-PRODID:-//Formula Kite World Championships 2026//PT
-CALSCALE:GREGORIAN
-METHOD:PUBLISH
-BEGIN:VEVENT
-UID:event-0@formulakite2026.com
-DTSTAMP:20260313T093543Z
-DTSTART:20260508T150000Z
-DTEND:20260508T180000Z
-SUMMARY:Formula Kite 2026 - Abertura do Recinto / Registo
-DESCRIPTION:Abertura do Recinto / Registo - Praia do Cabedelo, Viana do Castelo
-LOCATION:Praia do Cabedelo, Viana do Castelo, Portugal
-END:VEVENT
-BEGIN:VEVENT
-UID:event-1@formulakite2026.com
-DTSTAMP:20260313T093543Z
-DTSTART:20260509T090000Z
-DTEND:20260509T180000Z
-SUMMARY:Formula Kite 2026 - Inspeção de Equipamento
-DESCRIPTION:Inspeção de Equipamento - Praia do Cabedelo, Viana do Castelo
-LOCATION:Praia do Cabedelo, Viana do Castelo, Portugal
-END:VEVENT
-BEGIN:VEVENT
-UID:event-2@formulakite2026.com
-DTSTAMP:20260313T093543Z
-DTSTART:20260510T180000Z
-DTEND:20260510T200000Z
-SUMMARY:Formula Kite 2026 - Cerimónia de Abertura
-DESCRIPTION:Cerimónia de Abertura - Praia do Cabedelo, Viana do Castelo
-LOCATION:Praia do Cabedelo, Viana do Castelo, Portugal
-END:VEVENT
-BEGIN:VEVENT
-UID:event-3@formulakite2026.com
-DTSTAMP:20260313T093543Z
-DTSTART:20260511T110000Z
-DTEND:20260515T180000Z
-SUMMARY:Formula Kite 2026 - Opening Series (Qualificação)
-DESCRIPTION:Opening Series (Qualificação) - Praia do Cabedelo, Viana do Castelo
-LOCATION:Praia do Cabedelo, Viana do Castelo, Portugal
-END:VEVENT
-BEGIN:VEVENT
-UID:event-4@formulakite2026.com
-DTSTAMP:20260313T093543Z
-DTSTART:20260516T121500Z
-DTEND:20260516T180000Z
-SUMMARY:Formula Kite 2026 - Medal Series & Entrega de Prémios
-DESCRIPTION:Medal Series & Entrega de Prémios - Praia do Cabedelo, Viana do Castelo
-LOCATION:Praia do Cabedelo, Viana do Castelo, Portugal
-END:VEVENT
-END:VCALENDAR`;
-
+              const icsContent = `BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//Formula Kite World Championships 2026//PT\nCALSCALE:GREGORIAN\nMETHOD:PUBLISH\nBEGIN:VEVENT\nUID:event-0@formulakite2026.com\nDTSTAMP:20260313T093543Z\nDTSTART:20260508T150000Z\nDTEND:20260508T180000Z\nSUMMARY:Formula Kite 2026 - Abertura do Recinto / Registo\nDESCRIPTION:Abertura do Recinto / Registo - Praia do Cabedelo, Viana do Castelo\nLOCATION:Praia do Cabedelo, Viana do Castelo, Portugal\nEND:VEVENT\nEND:VCALENDAR`;
               const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
               const url = window.URL.createObjectURL(blob);
               const a = document.createElement('a');
@@ -405,8 +358,8 @@ END:VCALENDAR`;
               { name: 'Riccardo Pianosi', nat: 'ITA', flag: '🇮🇹', sail: '10', rank: 4, gear: 'Ozone', kites: '15m / 11m / 9m', desc: lang === 'pt' ? 'Jovem promessa italiana super rápida.' : 'Young Italian promise, incredibly fast.' },
               { name: 'Connor Bainbridge', nat: 'GBR', flag: '🇬🇧', sail: '4', rank: 3, gear: 'Flysurfer', kites: '21m / 15m / 11m', desc: lang === 'pt' ? 'Especialista em condições de vento leve.' : 'Specialist in light wind conditions.' },
               { name: 'Daniela Moroz', nat: 'USA', flag: '🇺🇸', sail: '14', rank: 1, gear: 'Flysurfer', kites: '15m / 11m / 9m', desc: lang === 'pt' ? 'Líder incontestável da elite feminina.' : 'Undisputed leader of the female elite.' },
-              { name: 'Tomás Pires Lima', nat: 'POR', flag: '🇵🇹', sail: '7', rank: 18, gear: 'F-One', kites: '15m / 11m / 9m', desc: lang === 'pt' ? 'Nova geração, a competir em casa durante a qualificação Olímpica.' : 'New generation, competing at home during Olympic qualification.' },
-              { name: 'Mafalda Pires Lima', nat: 'POR', flag: '🇵🇹', sail: '12', rank: 12, gear: 'F-One', kites: '15m / 11m', desc: lang === 'pt' ? 'Experiência em qualificação Olímpica e atleta em progressão.' : 'Previous Olympic qualification experience and progressing.' },
+              { name: 'Tomás Pires Lima', nat: 'POR', flag: '🇵🇹', sail: '7', rank: 18, gear: 'F-One', kites: '15m / 11m / 9m', desc: lang === 'pt' ? 'Nova geração, a competir em casa.' : 'New generation, competing at home.' },
+              { name: 'Mafalda Pires Lima', nat: 'POR', flag: '🇵🇹', sail: '12', rank: 12, gear: 'F-One', kites: '15m / 11m', desc: lang === 'pt' ? 'Atleta em progressão.' : 'Progressing athlete.' },
           ];
 
           // 🏆 RESULTADOS DATA
@@ -426,28 +379,16 @@ END:VCALENDAR`;
               { pos: 5, nat: 'POR', flag: '🇵🇹', name: 'Tomás Pires Lima', status: 'SEMI-FINAL' },
           ];
 
-          // === DADOS KML OFICIAIS EXTRAÍDOS ===
+          // === DADOS KML ===
           const kmlLocations = useMemo(() => [
-              { id: 'race_groups', type: 'race', name: lang === 'pt' ? 'Qualificações (Race Area)' : 'Qualifiers (Race Area)', description: lang === 'pt' ? 'Área principal para as regatas de qualificação no oceano.' : 'Main zone for ocean qualifying races.', coords: [[41.680864,-8.849865],[41.685324,-8.859378],[41.682129,-8.868657],[41.671461,-8.870596],[41.667096,-8.859935],[41.670984,-8.847808]], iconStr: 'waves', icon: <MIcon name="waves" />, color: '#facc15', twColor: 'bg-yellow-500' },
-              { id: 'race_finals', type: 'race', name: lang === 'pt' ? 'Finais (Race Area)' : 'Finals (Race Area)', description: lang === 'pt' ? 'Área reservada para a Medal Series (Finais).' : 'Reserved for the Medal Series (Finals).', coords: [[41.670146,-8.839606],[41.668041,-8.835275],[41.668890,-8.831358],[41.673116,-8.831389],[41.675537,-8.834998],[41.674686,-8.838955]], iconStr: 'trophy', icon: <MIcon name="trophy" />, color: '#facc15', twColor: 'bg-yellow-400' },
-              { id: 'hotel', type: 'logistics', name: 'Hotel Feel Viana', description: lang === 'pt' ? 'Alojamento oficial das equipas e organização ao lado da prova.' : 'Official accommodation for teams and organization near the venue.', coords: [[41.680353,-8.829790],[41.680857,-8.828637],[41.681817,-8.830230],[41.681533,-8.830842]], iconStr: 'building', icon: <MIcon name="building" />, color: '#8b5cf6', twColor: 'bg-purple-600' },
-              { id: 'riders_tent', type: 'logistics', name: 'Riders Tent', description: lang === 'pt' ? 'Tenda de apoio aos atletas.' : 'Athletes support tent.', coords: [[41.678644,-8.831298],[41.678337,-8.830976],[41.678421,-8.830871],[41.678722,-8.831183]], iconStr: 'tent', icon: <MIcon name="tent" />, color: '#3b82f6', twColor: 'bg-blue-500' },
-              { id: 'race_office', type: 'fanzone', name: 'Racing Office & Measurements', description: lang === 'pt' ? 'Secretariado oficial e zona de medição.' : 'Official secretariat and measurement zone.', coords: [[41.678862,-8.831542],[41.678886,-8.831515],[41.678922,-8.831483],[41.679005,-8.831632],[41.678940,-8.831689]], iconStr: 'info', icon: <MIcon name="info" />, color: '#ef4444', twColor: 'bg-red-500' },
-              { id: 'beach_bar', type: 'fanzone', name: 'Beach Bar', description: lang === 'pt' ? 'Ponto de encontro e socialização.' : 'Meeting and socialization point.', coords: [[41.678858,-8.831532],[41.678809,-8.831436],[41.678868,-8.831387],[41.678915,-8.831475]], iconStr: 'coffee', icon: <MIcon name="coffee" />, color: '#ec4899', twColor: 'bg-pink-500' },
-              { id: 'south_van', type: 'logistics', name: 'South Van Parking', description: lang === 'pt' ? 'Estacionamento Sul para carrinhas.' : 'South parking for vans.', coords: [[41.678060,-8.827693],[41.677928,-8.827567],[41.678295,-8.827095],[41.678394,-8.827213]], iconStr: 'car', icon: <MIcon name="car" />, color: '#64748b', twColor: 'bg-slate-500' },
-              { id: 'north_van', type: 'logistics', name: 'North Van Parking', description: lang === 'pt' ? 'Estacionamento Norte para carrinhas.' : 'North parking for vans.', coords: [[41.680407,-8.828795],[41.680366,-8.828745],[41.680612,-8.828167],[41.680658,-8.828221]], iconStr: 'car', icon: <MIcon name="car" />, color: '#64748b', twColor: 'bg-slate-500' },
-              { id: 'trailer_park', type: 'logistics', name: 'Trailer Park', description: lang === 'pt' ? 'Estacionamento de atrelados.' : 'Trailer parking.', coords: [[41.685294,-8.837139],[41.685448,-8.837358],[41.685157,-8.837791],[41.685004,-8.837564]], iconStr: 'truck', icon: <MIcon name="truck" />, color: '#64748b', twColor: 'bg-slate-500' },
-              { id: 'rib_south', type: 'logistics', name: 'Rib South', description: lang === 'pt' ? 'Estacionamento de barcos de apoio a sul.' : 'Support boats parking south.', coords: [[41.683102,-8.829154],[41.683367,-8.829112],[41.683573,-8.830164],[41.683328,-8.830247]], iconStr: 'anchor', icon: <MIcon name="anchor" />, color: '#f97316', twColor: 'bg-orange-500' },
-              { id: 'rib_north', type: 'logistics', name: 'Rib Area North', description: lang === 'pt' ? 'Estacionamento de barcos de apoio a norte.' : 'Support boats parking north.', coords: [[41.686631,-8.838747],[41.686393,-8.839250],[41.685539,-8.838522],[41.685732,-8.838111]], iconStr: 'anchor', icon: <MIcon name="anchor" />, color: '#f97316', twColor: 'bg-orange-500' },
-              { id: 'rib_crane', type: 'logistics', name: 'Rib Crane', description: lang === 'pt' ? 'Grua para colocação de barcos.' : 'Crane for deploying boats.', coords: [[41.685025,-8.838565],[41.684902,-8.838449],[41.685060,-8.838120],[41.685173,-8.838277]], iconStr: 'ship', icon: <MIcon name="ship" />, color: '#06b6d4', twColor: 'bg-cyan-500' },
-              { id: 'eco_1', type: 'eco', name: lang === 'pt' ? 'Eco Station (Público)' : 'Eco Station (Public)', description: lang === 'pt' ? 'Estação de reciclagem para o público e restauração.' : 'Recycling station for the public and food court.', coords: [[41.678750,-8.831300]], iconStr: 'recycle', icon: <MIcon name="recycle" />, color: '#22c55e', twColor: 'bg-green-500' },
-              { id: 'eco_2', type: 'eco', name: lang === 'pt' ? 'Eco Station (Atletas)' : 'Eco Station (Athletes)', description: lang === 'pt' ? 'Estação de reciclagem na zona técnica e tenda dos atletas.' : 'Recycling station in the technical area and athletes tent.', coords: [[41.678500,-8.830900]], iconStr: 'recycle', icon: <MIcon name="recycle" />, color: '#22c55e', twColor: 'bg-green-500' },
-              { id: 'eco_3', type: 'eco', name: lang === 'pt' ? 'Eco Station (Norte)' : 'Eco Station (North)', description: lang === 'pt' ? 'Ponto de recolha e ecoponto na zona norte e Trailer Park.' : 'Collection point and ecopoint in the north zone and Trailer Park.', coords: [[41.685300,-8.837500]], iconStr: 'recycle', icon: <MIcon name="recycle" />, color: '#22c55e', twColor: 'bg-green-500' }
+              { id: 'race_groups', type: 'race', name: lang === 'pt' ? 'Qualificações' : 'Qualifiers', description: 'Área principal.', coords: [[41.680864,-8.849865],[41.685324,-8.859378],[41.682129,-8.868657],[41.671461,-8.870596],[41.667096,-8.859935],[41.670984,-8.847808]], iconStr: 'waves', icon: <MIcon name="waves" />, color: '#facc15', twColor: 'bg-yellow-500' },
+              { id: 'race_finals', type: 'race', name: lang === 'pt' ? 'Finais' : 'Finals', description: 'Área reservada Medal Series.', coords: [[41.670146,-8.839606],[41.668041,-8.835275],[41.668890,-8.831358],[41.673116,-8.831389],[41.675537,-8.834998],[41.674686,-8.838955]], iconStr: 'trophy', icon: <MIcon name="trophy" />, color: '#facc15', twColor: 'bg-yellow-400' },
+              { id: 'hotel', type: 'logistics', name: 'Hotel Feel Viana', description: 'Alojamento oficial.', coords: [[41.680353,-8.829790],[41.680857,-8.828637],[41.681817,-8.830230],[41.681533,-8.830842]], iconStr: 'building', icon: <MIcon name="building" />, color: '#8b5cf6', twColor: 'bg-purple-600' },
+              { id: 'eco_1', type: 'eco', name: 'Eco Station', description: 'Estação de reciclagem.', coords: [[41.678750,-8.831300]], iconStr: 'recycle', icon: <MIcon name="recycle" />, color: '#22c55e', twColor: 'bg-green-500' }
           ], [lang]);
 
           const kmlLines = [
-              { id: 'north_barrier', name: 'North Beach Barrier', color: '#ef4444', coords: [[41.679339,-8.832465],[41.678788,-8.832961]] },
-              { id: 'south_barrier', name: 'South Beach Barrier', color: '#ef4444', coords: [[41.678167,-8.830496],[41.677703,-8.830962]] }
+              { id: 'north_barrier', name: 'North Beach Barrier', color: '#ef4444', coords: [[41.679339,-8.832465],[41.678788,-8.832961]] }
           ];
 
           const filteredLocations = useMemo(() => {
@@ -455,95 +396,50 @@ END:VCALENDAR`;
               return kmlLocations.filter(loc => activeFilters.includes(loc.type));
           }, [activeFilters, kmlLocations]);
 
-          // --- LEAFLET MAP EFFECT (ABA DE MAPA) ---
+          // --- LEAFLET MAP EFFECT ---
           const mapRef = useRef(null);
 
           useEffect(() => {
               if (activeTab !== 'map' || showSplash || !hasAccess) return;
-              
               const mapId = 'real-map';
               const mapContainer = document.getElementById(mapId);
               if (!mapContainer || !window.L) return;
 
-              if (mapRef.current) {
-                  mapRef.current.off();
-                  mapRef.current.remove();
-                  mapRef.current = null;
-              }
-              if (window.leafletMap) {
-                  window.leafletMap.off();
-                  window.leafletMap.remove();
-                  window.leafletMap = null;
-              }
-              
+              if (mapRef.current) { mapRef.current.off(); mapRef.current.remove(); mapRef.current = null; }
               let domContainer = window.L.DomUtil.get(mapId);
-              if (domContainer) {
-                  domContainer._leaflet_id = null;
-                  domContainer.innerHTML = '';
-              }
+              if (domContainer) { domContainer._leaflet_id = null; domContainer.innerHTML = ''; }
 
               const map = window.L.map(mapId, { zoomControl: false }).setView([41.679, -8.836], 15);
               mapRef.current = map;
-              window.leafletMap = map;
               
-              window.L.tileLayer('https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
-                  maxZoom: 20,
-                  attribution: '© Google'
-              }).addTo(map);
+              window.L.tileLayer('https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', { maxZoom: 20, attribution: '© Google' }).addTo(map);
 
-              kmlLines.forEach(line => {
-                  window.L.polyline(line.coords, { color: line.color, weight: 4, dashArray: '5, 5' }).addTo(map);
-              });
+              kmlLines.forEach(line => window.L.polyline(line.coords, { color: line.color, weight: 4, dashArray: '5, 5' }).addTo(map));
 
               kmlLocations.forEach(loc => {
-                  if (loc.coords.length > 2) {
-                      window.L.polygon(loc.coords, {
-                          color: loc.color,
-                          fillColor: loc.color,
-                          fillOpacity: 0.4,
-                          weight: 2
-                      }).addTo(map);
-                  }
-
+                  if (loc.coords.length > 2) window.L.polygon(loc.coords, { color: loc.color, fillColor: loc.color, fillOpacity: 0.4, weight: 2 }).addTo(map);
                   let latSum = 0, lngSum = 0;
                   loc.coords.forEach(c => { latSum += c[0]; lngSum += c[1]; });
                   const center = [latSum / loc.coords.length, lngSum / loc.coords.length];
                   
                   const divIcon = window.L.divIcon({
                       className: 'leaflet-div-icon-custom',
-                      html: `<div class="${loc.twColor} w-8 h-8 rounded-xl shadow-[0_0_15px_rgba(0,0,0,0.5)] border-2 border-white flex items-center justify-center text-white cursor-pointer hover:scale-110 transition-transform" onclick="window.selectLocGlobal('${loc.id}')">
-                               <i data-lucide="${loc.iconStr}" style="width:16px;height:16px;"></i>
-                             </div>`,
-                      iconSize: [32, 32],
-                      iconAnchor: [16, 16]
+                      html: `<div class="${loc.twColor} w-8 h-8 rounded-xl shadow-[0_0_15px_rgba(0,0,0,0.5)] border-2 border-white flex items-center justify-center text-white cursor-pointer hover:scale-110 transition-transform" onclick="window.selectLocGlobal('${loc.id}')"><i data-lucide="${loc.iconStr}" style="width:16px;height:16px;"></i></div>`,
+                      iconSize: [32, 32], iconAnchor: [16, 16]
                   });
-
                   window.L.marker(center, {icon: divIcon}).addTo(map);
               });
               
-              setTimeout(() => { 
-                  if(window.leafletMap) window.leafletMap.invalidateSize();
-                  if(window.lucide) window.lucide.createIcons(); 
-              }, 200);
+              setTimeout(() => { if(mapRef.current) mapRef.current.invalidateSize(); if(window.lucide) window.lucide.createIcons(); }, 200);
 
               return () => {
-                  if (mapRef.current) {
-                      mapRef.current.off();
-                      mapRef.current.remove();
-                      mapRef.current = null;
-                  }
-                  if (window.leafletMap) {
-                      window.leafletMap = null;
-                  }
+                  if (mapRef.current) { mapRef.current.off(); mapRef.current.remove(); mapRef.current = null; }
                   let domC = document.getElementById(mapId);
-                  if (domC) {
-                      domC._leaflet_id = null;
-                      domC.innerHTML = '';
-                  }
+                  if (domC) { domC._leaflet_id = null; domC.innerHTML = ''; }
               };
           }, [activeTab, showSplash, hasAccess, kmlLocations]);
 
-          // --- LEAFLET TRACKING EFFECT (NOVA ABA TRACKING) ---
+          // --- LEAFLET TRACKING EFFECT ---
           const trackingMapRef = useRef(null);
           const markersRef = useRef({});
 
@@ -555,83 +451,39 @@ END:VCALENDAR`;
                   const mapContainer = document.getElementById(mapId);
                   if (!mapContainer || !window.L) return;
 
-                  if (trackingMapRef.current) {
-                      trackingMapRef.current.off();
-                      trackingMapRef.current.remove();
-                      trackingMapRef.current = null;
-                  }
+                  if (trackingMapRef.current) { trackingMapRef.current.off(); trackingMapRef.current.remove(); trackingMapRef.current = null; }
                   let domContainer = window.L.DomUtil.get(mapId);
-                  if (domContainer) {
-                      domContainer._leaflet_id = null;
-                      domContainer.innerHTML = '';
-                  }
+                  if (domContainer) { domContainer._leaflet_id = null; domContainer.innerHTML = ''; }
                   
                   const map = window.L.map(mapId, { zoomControl: false }).setView([41.675, -8.855], 14);
                   trackingMapRef.current = map;
-                  
-                  window.L.tileLayer('https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
-                      maxZoom: 20,
-                      attribution: '© Google'
-                  }).addTo(map);
+                  window.L.tileLayer('https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', { maxZoom: 20, attribution: '© Google' }).addTo(map);
 
-                  kmlLines.forEach(line => {
-                      window.L.polyline(line.coords, { color: line.color, weight: 4, dashArray: '5, 5' }).addTo(map);
-                  });
-
+                  kmlLines.forEach(line => window.L.polyline(line.coords, { color: line.color, weight: 4, dashArray: '5, 5' }).addTo(map));
                   kmlLocations.filter(loc => loc.type === 'race').forEach(loc => {
-                      if (loc.coords.length > 2) {
-                          window.L.polygon(loc.coords, {
-                              color: loc.color,
-                              fillColor: loc.color,
-                              fillOpacity: 0.4,
-                              weight: 2
-                          }).addTo(map);
-                      }
+                      if (loc.coords.length > 2) window.L.polygon(loc.coords, { color: loc.color, fillColor: loc.color, fillOpacity: 0.4, weight: 2 }).addTo(map);
                   });
                   
-                  setTimeout(() => { 
-                      if(trackingMapRef.current) trackingMapRef.current.invalidateSize();
-                  }, 200);
+                  setTimeout(() => { if(trackingMapRef.current) trackingMapRef.current.invalidateSize(); }, 200);
               }, 100);
 
               return () => {
                   if (timeoutId) clearTimeout(timeoutId);
-                  if (trackingMapRef.current) {
-                      trackingMapRef.current.off();
-                      trackingMapRef.current.remove();
-                      trackingMapRef.current = null;
-                      markersRef.current = {};
-                  }
+                  if (trackingMapRef.current) { trackingMapRef.current.off(); trackingMapRef.current.remove(); trackingMapRef.current = null; markersRef.current = {}; }
                   let domC = document.getElementById('tracking-map');
-                  if (domC) {
-                      domC._leaflet_id = null;
-                      domC.innerHTML = '';
-                  }
+                  if (domC) { domC._leaflet_id = null; domC.innerHTML = ''; }
               };
           }, [activeTab, showSplash, hasAccess, kmlLocations]);
 
           useEffect(() => {
               if (activeTab === 'tracking' && trackingMapRef.current && window.L && hasAccess) {
                   const map = trackingMapRef.current;
-                  
                   liveAthletes.forEach(a => {
                       if (markersRef.current[a.id]) {
                           markersRef.current[a.id].setLatLng([a.lat, a.lng]);
                       } else {
-                          const iconHtml = `
-                              <div class="flex flex-col items-center group">
-                                  <div class="bg-slate-900 text-white text-[9px] font-black px-1.5 py-0.5 rounded shadow-lg whitespace-nowrap mb-1 flex items-center gap-1 group-hover:scale-125 transition-transform border border-slate-700">
-                                      <span>${a.flag}</span> ${a.sail}
-                                  </div>
-                                  <div class="w-3 h-3 bg-red-500 rounded-full border-2 border-white shadow-[0_0_10px_rgba(239,68,68,0.8)] animate-pulse"></div>
-                              </div>
-                          `;
-                          const divIcon = window.L.divIcon({
-                              className: 'leaflet-div-icon-custom',
-                              html: iconHtml,
-                              iconSize: [40, 40],
-                              iconAnchor: [20, 40]
-                          });
+                          const iconHtml = `<div class="flex flex-col items-center group"><div class="bg-slate-900 text-white text-[9px] font-black px-1.5 py-0.5 rounded shadow-lg whitespace-nowrap mb-1 flex items-center gap-1 group-hover:scale-125 transition-transform border border-slate-700"><span>${a.flag}</span> ${a.sail}</div><div class="w-3 h-3 bg-red-500 rounded-full border-2 border-white shadow-[0_0_10px_rgba(239,68,68,0.8)] animate-pulse"></div></div>`;
+                          const divIcon = window.L.divIcon({ className: 'leaflet-div-icon-custom', html: iconHtml, iconSize: [40, 40], iconAnchor: [20, 40] });
                           const marker = window.L.marker([a.lat, a.lng], { icon: divIcon }).addTo(map);
                           markersRef.current[a.id] = marker;
                       }
@@ -640,10 +492,7 @@ END:VCALENDAR`;
           }, [liveAthletes, activeTab, hasAccess]);
 
           useEffect(() => {
-              window.selectLocGlobal = (id) => {
-                  const loc = kmlLocations.find(l => l.id === id);
-                  if(loc) setSelectedPoint(loc);
-              };
+              window.selectLocGlobal = (id) => { const loc = kmlLocations.find(l => l.id === id); if(loc) setSelectedPoint(loc); };
           }, [kmlLocations]);
 
           useEffect(() => {
@@ -660,7 +509,7 @@ END:VCALENDAR`;
              setChatHistory(prev => [...prev, { role: 'user', text: chatInput }]);
              setChatInput(''); setIsTyping(true);
              setTimeout(() => {
-                 setChatHistory(prev => [...prev, { role: 'model', text: lang === 'pt' ? 'A Formula Kite é uma classe olímpica de extrema velocidade e tática! A nortada em Viana é ideal para estas pranchas hydrofoil.' : 'Formula Kite is an extremely fast and tactical Olympic class! The Nortada wind in Viana is ideal for these hydrofoils.' }]);
+                 setChatHistory(prev => [...prev, { role: 'model', text: lang === 'pt' ? 'A Formula Kite é uma classe olímpica de extrema velocidade e tática!' : 'Formula Kite is an extremely fast Olympic class!' }]);
                  setIsTyping(false);
              }, 1500);
           };
@@ -668,27 +517,20 @@ END:VCALENDAR`;
           return (
             <div className={isDarkMode ? 'dark' : ''}>
               
-              {/* === SPLASH SCREEN PROFISSIONAL === */}
+              {/* ECRÃ DE SPLASH */}
               {showSplash && (
                   <div className={`absolute inset-0 z-[100] flex flex-col items-center justify-center bg-slate-900 transition-opacity duration-500 ease-in-out ${splashFadeOut ? 'opacity-0' : 'opacity-100'}`}>
                       <img src="image_11335c.png" alt="Formula Kite Logo" className="h-24 md:h-32 lg:h-40 mb-6 animate-pulse object-contain drop-shadow-[0_0_15px_rgba(255,255,255,0.1)]" />
                       <h1 className="text-white font-black tracking-[0.2em] text-xl lg:text-2xl uppercase">Viana 2026</h1>
-                      <p className="text-emerald-400 text-xs lg:text-sm font-bold tracking-widest mt-2 uppercase opacity-80">World Championships</p>
-                      
                       <div className="w-40 lg:w-48 h-1 bg-slate-800 rounded-full mt-10 overflow-hidden relative">
                           <div className="absolute top-0 bottom-0 left-0 bg-emerald-500 w-full animate-progress rounded-full"></div>
                       </div>
                   </div>
               )}
 
-              {/* === ECRÃ DE LOGIN / ACESSO === */}
+              {/* ECRÃ DE LOGIN (APARECE SE NÃO HOUVER ACESSO) */}
               {!showSplash && !hasAccess && (
                   <div className="absolute inset-0 z-[90] bg-slate-900 flex flex-col items-center justify-center p-4">
-                      <div className="absolute inset-0 overflow-hidden pointer-events-none opacity-20">
-                          <div className="absolute -top-[20%] -right-[10%] w-[70%] h-[70%] bg-emerald-500 rounded-full blur-[120px]"></div>
-                          <div className="absolute -bottom-[20%] -left-[10%] w-[60%] h-[60%] bg-blue-500 rounded-full blur-[120px]"></div>
-                      </div>
-
                       <div className="bg-white/10 backdrop-blur-xl border border-white/20 p-8 md:p-10 rounded-3xl shadow-2xl w-full max-w-md relative z-10 animate-in fade-in slide-in-from-bottom-8 duration-700">
                           <div className="flex flex-col items-center mb-8 text-center">
                               <img src="image_11335c.png" alt="Logo" className="h-16 mb-4 object-contain drop-shadow-md" />
@@ -699,718 +541,217 @@ END:VCALENDAR`;
                           <form onSubmit={handleLogin} className="space-y-5">
                               <div>
                                   <label className="block text-[10px] font-bold text-emerald-400 uppercase tracking-widest mb-1.5">{t.nameLabel}</label>
-                                  <div className="relative">
-                                      <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                                          <MIcon name="user" size={18} />
-                                      </div>
-                                      <input 
-                                          type="text" 
-                                          required
-                                          value={formData.name}
-                                          onChange={(e) => setFormData({...formData, name: e.target.value})}
-                                          className="w-full bg-slate-900/50 border border-slate-700 text-white rounded-xl py-3 pl-11 pr-4 focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all"
-                                          placeholder="Ex: João Silva"
-                                      />
-                                  </div>
+                                  <input type="text" required value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} className="w-full bg-slate-900/50 border border-slate-700 text-white rounded-xl py-3 px-4 focus:ring-2 focus:ring-emerald-500 outline-none" placeholder="Ex: João Silva" />
                               </div>
-                              
                               <div>
                                   <label className="block text-[10px] font-bold text-emerald-400 uppercase tracking-widest mb-1.5">{t.emailLabel}</label>
-                                  <div className="relative">
-                                      <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                                          <MIcon name="mail" size={18} />
-                                      </div>
-                                      <input 
-                                          type="email" 
-                                          required
-                                          value={formData.email}
-                                          onChange={(e) => setFormData({...formData, email: e.target.value})}
-                                          className="w-full bg-slate-900/50 border border-slate-700 text-white rounded-xl py-3 pl-11 pr-4 focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all"
-                                          placeholder="joao@email.com"
-                                      />
-                                  </div>
+                                  <input type="email" required value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} className="w-full bg-slate-900/50 border border-slate-700 text-white rounded-xl py-3 px-4 focus:ring-2 focus:ring-emerald-500 outline-none" placeholder="joao@email.com" />
                               </div>
-
-                              <button 
-                                  type="submit" 
-                                  disabled={isSubmitting}
-                                  className="w-full bg-emerald-500 hover:bg-emerald-400 text-white font-bold py-3.5 rounded-xl shadow-[0_0_20px_rgba(16,185,129,0.3)] transition-all flex justify-center items-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed mt-4"
-                              >
-                                  {isSubmitting ? (
-                                      <><MIcon name="loader-2" size={18} className="animate-spin" /> {t.entering}</>
-                                  ) : (
-                                      <><MIcon name="log-in" size={18} /> {t.enterBtn}</>
-                                  )}
+                              <button type="submit" disabled={isSubmitting} className="w-full bg-emerald-500 hover:bg-emerald-400 text-white font-bold py-3.5 rounded-xl shadow-lg mt-4 flex justify-center items-center gap-2">
+                                  {isSubmitting ? t.entering : t.enterBtn}
                               </button>
                           </form>
-                      </div>
-
-                      <div className="absolute bottom-6 flex gap-4 text-slate-500 z-10 text-xs font-medium">
-                          <button onClick={() => setLang('pt')} className={lang === 'pt' ? 'text-white' : ''}>PT</button>
-                          <span>|</span>
-                          <button onClick={() => setLang('en')} className={lang === 'en' ? 'text-white' : ''}>EN</button>
                       </div>
                   </div>
               )}
 
-              {/* === CONTEÚDO PRINCIPAL (Só mostra se tiver acesso) === */}
-              {hasAccess && (
-              <div className="flex flex-col h-[100dvh] bg-slate-50 dark:bg-slate-950 font-sans text-slate-900 dark:text-slate-100 overflow-hidden transition-colors duration-300 relative">
-                
-                {/* === MODAL DE REALIDADE AUMENTADA (AR SIMULATOR) === */}
-                {showAR && (
-                    <div className="absolute inset-0 z-50 ar-background overflow-hidden flex flex-col animate-in fade-in duration-500">
-                        <div className="absolute top-0 left-0 w-full h-[2px] bg-emerald-400/50 shadow-[0_0_20px_4px_rgba(52,211,153,0.5)] animate-scanline z-10 pointer-events-none"></div>
-                        <div className="absolute top-6 w-full px-6 flex justify-between items-start z-20">
-                            <div>
-                                <span className="inline-block bg-red-500 text-white text-[10px] font-black uppercase px-2 py-1 rounded-md animate-pulse mb-2">{t.arOverlayTitle}</span>
-                                <p className="text-white/80 text-xs font-medium">{t.arAim}</p>
-                            </div>
-                            <button onClick={() => setShowAR(false)} className="bg-white/10 hover:bg-white/20 backdrop-blur-md text-white border border-white/20 px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2">
-                                <MIcon name="x" size={14} /> {t.arClose}
-                            </button>
-                        </div>
-                        <div className="absolute top-8 right-1/2 translate-x-1/2 text-white/50 text-xl font-light tracking-[0.5em] flex gap-8 z-10 pointer-events-none">
-                            <span>|</span><span>|</span><span>NW</span><span>|</span><span>|</span>
-                        </div>
-                        <div className="flex-1 relative w-full h-full flex items-center justify-center z-10">
-                            <div className="w-16 h-16 border border-white/30 rounded-full flex items-center justify-center relative">
-                                <div className="w-1 h-1 bg-emerald-400 rounded-full"></div>
-                                <div className="absolute top-0 bottom-0 left-1/2 w-px bg-white/20"></div>
-                                <div className="absolute left-0 right-0 top-1/2 h-px bg-white/20"></div>
-                            </div>
-                            <div className="absolute left-[30%] top-[40%] animate-float flex flex-col items-center group cursor-pointer">
-                                <div className="w-8 h-8 md:w-12 md:h-12 bg-orange-500 rounded-full shadow-[0_0_30px_rgba(249,115,22,0.8)] border-4 border-white flex items-center justify-center text-white mb-2 transform -rotate-12 group-hover:scale-110 transition-transform">
-                                    <MIcon name="triangle" size={16} />
-                                </div>
-                                <div className="bg-slate-900/80 backdrop-blur border border-white/10 px-3 py-1.5 rounded-lg text-center">
-                                    <p className="text-white font-bold text-[10px] md:text-xs">{t.arMark1}</p>
-                                    <p className="text-emerald-400 font-mono text-[9px]">{t.arDistance}</p>
-                                </div>
-                            </div>
-                            <div className="absolute right-[25%] top-[55%] animate-float flex flex-col items-center group cursor-pointer" style={{ animationDelay: '1.5s' }}>
-                                <div className="w-6 h-6 md:w-10 md:h-10 bg-yellow-400 rounded-full shadow-[0_0_20px_rgba(250,204,21,0.6)] border-[3px] border-white flex items-center justify-center text-yellow-900 mb-2 transform rotate-12 group-hover:scale-110 transition-transform">
-                                    <MIcon name="triangle" size={12} className="rotate-180" />
-                                </div>
-                                <div className="bg-slate-900/80 backdrop-blur border border-white/10 px-2 py-1 rounded-md text-center">
-                                    <p className="text-white font-bold text-[9px] md:text-[10px]">{t.arMark2}</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                )}
-
-                {/* === HEADER PRINCIPAL C/ BRANDING OFICIAL === */}
-                <header className="bg-slate-900 dark:bg-black text-white z-40 shadow-xl shrink-0 flex flex-col relative">
-                  
-                  {/* Top Ribbon - Partners */}
-                  <div className="bg-slate-950/50 border-b border-white/5 py-1.5 px-4 lg:px-6 flex justify-between items-center text-[9px] lg:text-[10px] text-slate-400 uppercase tracking-widest hidden sm:flex">
-                     <span className="font-bold text-emerald-500 flex items-center gap-1.5"><MIcon name="smartphone" size={12}/> {t.officialApp}</span>
-                     <div className="flex items-center gap-4">
-                         <span>{t.partners}</span>
-                         <div className="flex items-center gap-4 text-slate-300">
-                             <a href="https://sailing.org" target="_blank" className="flex items-center gap-1 hover:text-white transition-colors"><MIcon name="compass" size={12}/> World Sailing</a>
-                             <a href="https://kiteclasses.org" target="_blank" className="flex items-center gap-1 hover:text-white transition-colors"><MIcon name="wind" size={12}/> IKA</a>
-                             <a href="https://fpvela.pt" target="_blank" className="flex items-center gap-1 hover:text-white transition-colors"><MIcon name="flag" size={12}/> FPVela</a>
-                         </div>
-                     </div>
-                  </div>
-
-                  {/* Main Header Area */}
-                  <div className="px-4 py-3 lg:px-6 lg:py-4 flex flex-col lg:flex-row lg:items-center justify-between gap-3 lg:gap-4 border-b border-slate-800">
-                      <div className="flex items-center justify-between w-full lg:w-auto">
-                          {/* Logo e Título com Subtítulo e Bandeira */}
-                          <div className="flex items-center gap-3 lg:gap-4">
-                            <img src="image_11335c.png" alt="Formula Kite Logo" className="h-14 md:h-16 lg:h-20 shrink-0 object-contain drop-shadow-[0_2px_10px_rgba(255,255,255,0.15)]" />
-                            <div>
-                              <h1 className="text-base lg:text-xl font-black tracking-tight leading-none uppercase">
-                                2026 Formula Kite
-                                <span className="block text-slate-400 text-[9px] lg:text-[11px] mt-0.5 tracking-widest">World Championships</span>
-                              </h1>
-                              <p className="text-[10px] lg:text-[11px] text-emerald-400 font-bold uppercase mt-1 flex items-center gap-1.5">
-                                <MIcon name="map-pin" size={10} /> {t.subtitle} 🇵🇹 <span className="hidden lg:inline text-slate-500 font-normal ml-1">| {t.subtitleDates}</span>
-                              </p>
-                            </div>
+              {/* CONTEÚDO PRINCIPAL (APARECE SE HOUVER ACESSO) */}
+              {!showSplash && hasAccess && (
+                  <div className="flex flex-col h-[100dvh] bg-slate-50 dark:bg-slate-950 font-sans text-slate-900 dark:text-slate-100 overflow-hidden relative">
+                      <header className="bg-slate-900 dark:bg-black text-white z-40 shadow-xl shrink-0 flex flex-col relative">
+                          <div className="px-4 py-3 lg:px-6 lg:py-4 flex flex-col lg:flex-row lg:items-center justify-between gap-3 border-b border-slate-800">
+                              <div className="flex items-center justify-between w-full lg:w-auto">
+                                  <div className="flex items-center gap-3">
+                                      <img src="image_11335c.png" alt="Logo" className="h-12 object-contain" />
+                                      <div>
+                                          <h1 className="text-base font-black tracking-tight leading-none uppercase">2026 Formula Kite</h1>
+                                          <p className="text-[10px] text-emerald-400 font-bold uppercase mt-1">Viana do Castelo 🇵🇹</p>
+                                      </div>
+                                  </div>
+                              </div>
+                              <nav className="flex bg-white/5 p-1.5 rounded-xl border border-white/10 gap-1 overflow-x-auto no-scrollbar w-full lg:w-auto">
+                                  {[ { id: 'tracking', label: t.tabTracking }, { id: 'map', label: t.tabMap }, { id: 'results', label: t.tabResults }, { id: 'athletes', label: t.tabAthletes }, { id: 'hotel', label: t.tabHotel }, { id: 'schedule', label: t.tabSchedule }, { id: 'ai', label: t.tabAI }, { id: 'settings', label: t.tabSettings } ].map(tab => (
+                                      <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`shrink-0 px-3 py-2 rounded-lg text-[10px] font-bold ${activeTab === tab.id ? 'bg-emerald-500 text-white' : 'text-slate-300 hover:text-white'}`}>
+                                          {tab.label}
+                                      </button>
+                                  ))}
+                              </nav>
                           </div>
+                      </header>
+
+                      <div className={`flex-1 flex overflow-hidden ${activeTab === 'map' || activeTab === 'tracking' ? 'flex-col lg:flex-row' : 'flex-col'}`}>
                           
-                          {/* Mobile Right Controls */}
-                          <div className="flex items-center gap-2 lg:hidden">
-                            <button onClick={toggleFullscreen} className="p-2 rounded-full hover:bg-white/10 text-white"><MIcon name={isFullscreen ? "minimize" : "maximize"} size={18} /></button>
-                          </div>
-                      </div>
-                      
-                      {/* Nav Bar */}
-                      <nav className="flex bg-white/5 dark:bg-white/10 p-1.5 rounded-xl border border-white/10 dark:border-white/5 backdrop-blur-md gap-1 overflow-x-auto no-scrollbar pb-1.5 lg:pb-1.5 items-center w-full lg:w-auto">
-                        {[
-                            { id: 'tracking', icon: 'crosshair', label: t.tabTracking },
-                            { id: 'map', icon: 'map', label: t.tabMap },
-                            { id: 'results', icon: 'list-ordered', label: t.tabResults },
-                            { id: 'athletes', icon: 'users', label: t.tabAthletes },
-                            { id: 'hotel', icon: 'building', label: t.tabHotel },
-                            { id: 'schedule', icon: 'calendar', label: t.tabSchedule },
-                            { id: 'ai', icon: 'sparkles', label: t.tabAI },
-                            { id: 'settings', icon: 'settings', label: t.tabSettings }
-                        ].map(tab => (
-                            <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`shrink-0 px-3 py-2 lg:px-4 lg:py-2 rounded-lg text-[10px] lg:text-xs font-bold flex items-center gap-1.5 transition-all relative ${activeTab === tab.id ? 'bg-emerald-500 text-white shadow-lg' : 'text-slate-300 hover:text-white hover:bg-white/10'}`}>
-                                <MIcon name={tab.icon} size={14} className={tab.id === 'ai' && activeTab === 'ai' ? 'animate-pulse' : ''} /> {tab.label}
-                            </button>
-                        ))}
-                        
-                        {/* Desktop Side Controls */}
-                        <div className="hidden lg:flex items-center gap-2 ml-2 pl-3 border-l border-white/10">
-                            <button onClick={toggleFullscreen} className="p-2 rounded-lg hover:bg-white/10 text-slate-300 hover:text-white transition-colors" title="Fullscreen"><MIcon name={isFullscreen ? "minimize" : "maximize"} size={16} /></button>
-                        </div>
-                      </nav>
-                  </div>
-                </header>
-
-                {/* === CONTEÚDO PRINCIPAL === */}
-                <div className={`flex-1 flex overflow-hidden ${activeTab === 'map' || activeTab === 'tracking' ? 'flex-col lg:flex-row' : 'flex-col'}`}>
-                  
-                  {/* 1️⃣ MAPA GOOGLE EARTH (GERAL - LEAFLET + KML DATA COMPLETO) */}
-                  {activeTab === 'map' ? (
-                    <>
-                      <main className="flex-none h-[50vh] lg:h-auto lg:flex-1 relative overflow-hidden bg-slate-900 transition-colors duration-300">
-                        <div className={`absolute inset-0 z-10 ${isDarkMode ? 'brightness-75 saturate-150 contrast-125' : ''}`}>
-                          <div id="real-map" className="w-full h-full absolute inset-0"></div>
-                        </div>
-                      </main>
-
-                      <aside className="flex-1 lg:flex-none w-full lg:w-[420px] bg-white dark:bg-slate-900 border-t lg:border-t-0 lg:border-l border-slate-200 dark:border-slate-800 shadow-[0_-10px_20px_rgba(0,0,0,0.05)] lg:shadow-2xl flex flex-col z-20 overflow-hidden transition-colors duration-300">
-                        <div className="p-2 lg:p-3 bg-slate-50 dark:bg-slate-800 flex gap-1.5 border-b border-slate-100 dark:border-slate-700 overflow-x-auto no-scrollbar shrink-0 transition-colors">
-                          {[{ id: 'all', label: t.filterAll }, { id: 'race', label: t.filterRace }, { id: 'logistics', label: t.filterLogistics }, { id: 'fanzone', label: t.filterFanzone }, { id: 'eco', label: t.filterEco }].map(f => {
-                            const isActive = activeFilters.includes(f.id);
-                            return (
-                              <button key={f.id} onClick={() => toggleFilter(f.id)} className={`shrink-0 px-4 py-2 lg:flex-1 lg:px-0 rounded-lg lg:rounded-xl text-[10px] font-black uppercase tracking-wider transition-all duration-200 ${isActive ? 'bg-emerald-500 text-white shadow-md lg:scale-105' : 'bg-white dark:bg-slate-900 text-slate-400 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700'}`}>
-                                {f.label}
-                              </button>
-                            );
-                          })}
-                        </div>
-
-                        <div className="flex-1 overflow-y-auto p-4 lg:p-6 scroll-smooth">
-                          {selectedPoint ? (
-                            <div className="animate-in slide-in-from-right-8 duration-300">
-                              <button onClick={() => { setSelectedPoint(null); if(window.leafletMap) window.leafletMap.setView([41.679, -8.840], 14); }} className="group flex items-center gap-2 text-[10px] font-black text-emerald-600 dark:text-emerald-400 mb-4 lg:mb-8 tracking-widest uppercase hover:text-emerald-700 dark:hover:text-emerald-300 transition-colors">
-                                <span className="p-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-900/30 group-hover:bg-emerald-100 dark:group-hover:bg-emerald-900/50 transition-colors">←</span>
-                                {t.backBtn}
-                              </button>
-                              
-                              <div className="flex items-center gap-4 mb-4 lg:mb-6">
-                                <div className={`relative w-12 h-12 lg:w-16 lg:h-16 shrink-0 rounded-xl lg:rounded-3xl ${selectedPoint.twColor} text-white flex items-center justify-center shadow-lg transform lg:-rotate-3`}>
-                                  {React.cloneElement(selectedPoint.icon, { className: "w-6 h-6 lg:w-8 lg:h-8" })}
-                                </div>
-                                <div>
-                                  <div className="inline-block px-2.5 py-1 bg-slate-100 dark:bg-slate-800 rounded-md text-[9px] lg:text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1.5 transition-colors">
-                                    {selectedPoint.type === 'race' ? (lang==='pt'?'Competição':'Race') : selectedPoint.type === 'logistics' ? 'Logistics' : selectedPoint.type === 'eco' ? 'Sustentabilidade' : 'Public'}
-                                  </div>
-                                  <h2 className="text-xl lg:text-3xl font-black text-slate-800 dark:text-white leading-tight transition-colors">{selectedPoint.name}</h2>
-                                </div>
-                              </div>
-
-                              <p className="text-slate-600 dark:text-slate-300 text-xs lg:text-sm leading-relaxed mb-8 transition-colors">{selectedPoint.description}</p>
-
-                              <div className="space-y-3 lg:space-y-4">
-                                <div className="bg-slate-50 dark:bg-slate-800/50 p-4 lg:p-5 rounded-2xl lg:rounded-3xl border border-slate-100 dark:border-slate-700 flex items-center gap-4 lg:gap-5 transition-colors">
-                                  <div className="p-2.5 lg:p-3 bg-white dark:bg-slate-800 rounded-xl lg:rounded-2xl shadow-sm text-emerald-500 shrink-0">
-                                    <MIcon name="map" className="lg:w-5 lg:h-5" size={18} />
-                                  </div>
-                                  <div>
-                                    <p className="text-[9px] lg:text-[10px] font-black text-slate-400 uppercase tracking-widest">{t.scheduleLabel}</p>
-                                    <p className="text-xs lg:text-sm font-bold text-slate-800 dark:text-slate-200">{t.scheduleDesc}</p>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          ) : (
-                            <div className="animate-in fade-in duration-300 pb-16 lg:pb-0">
-                              <div className="flex items-center justify-between mb-4 lg:mb-6">
-                                <h3 className="text-base lg:text-lg font-black text-slate-800 dark:text-white tracking-tight">{t.poiTitle}</h3>
-                                <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-2 py-1 lg:px-3 lg:py-1.5 rounded-md lg:rounded-lg text-[9px] lg:text-[10px] font-black transition-colors">
-                                  <MIcon name="map-pin" size={10} className="lg:w-3 lg:h-3" /> {filteredLocations.length} {t.locationsCount}
-                                </div>
-                              </div>
-                              <div className="space-y-2 lg:space-y-3">
-                                {filteredLocations.map(loc => (
-                                  <button 
-                                    key={loc.id} 
-                                    onClick={() => setSelectedPoint(loc)}
-                                    className="w-full p-3 lg:p-4 rounded-xl lg:rounded-3xl border border-slate-100 dark:border-slate-700 hover:border-emerald-300 dark:hover:border-emerald-600 hover:shadow-md transition-all duration-300 flex items-center gap-3 lg:gap-4 group bg-white dark:bg-slate-800 hover:bg-emerald-50/20 dark:hover:bg-slate-700 text-left relative overflow-hidden"
-                                  >
-                                    <div className={`w-10 h-10 lg:w-12 lg:h-12 rounded-lg lg:rounded-2xl ${loc.twColor} text-white flex items-center justify-center shadow-sm group-hover:scale-110 lg:group-hover:-rotate-3 transition-transform duration-300 shrink-0`}>
-                                      {React.cloneElement(loc.icon, { className: "w-5 h-5 lg:w-5 lg:h-5" })}
-                                    </div>
-                                    <div className="overflow-hidden flex-1 z-10">
-                                      <h4 className="font-bold text-xs lg:text-sm text-slate-800 dark:text-slate-100 truncate group-hover:text-emerald-700 dark:group-hover:text-emerald-400 transition-colors">{loc.name}</h4>
-                                      <p className="text-[9px] lg:text-[10px] text-slate-400 dark:text-slate-500 uppercase tracking-wider font-semibold mt-0.5 lg:mt-1 truncate">
-                                        {loc.type === 'race' ? (lang==='pt'?'Competição':'Race') : loc.type === 'logistics' ? 'Logistics' : loc.type === 'eco' ? 'Sustentabilidade' : 'Public'}
-                                      </p>
-                                    </div>
-                                    <div className="text-slate-300 dark:text-slate-600 group-hover:text-emerald-500 group-hover:translate-x-1 transition-all z-10">
-                                      →
-                                    </div>
-                                  </button>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      </aside>
-                    </>
-                  ) : activeTab === 'tracking' ? (
-                      /* 2️⃣ LIVE TRACKING VIEW */
-                      <>
-                        <main className="flex-none h-[50vh] lg:h-auto lg:flex-1 relative overflow-hidden bg-slate-900 transition-colors duration-300">
-                          <div className={`absolute inset-0 z-10 ${isDarkMode ? 'brightness-75 saturate-150 contrast-125' : ''}`}>
-                              <div id="tracking-map" className="w-full h-full absolute inset-0"></div>
-                          </div>
-
-                          <div className="absolute top-6 left-6 z-30 flex flex-col gap-2">
-                              <button onClick={() => trackingMapRef.current?.zoomIn()} className="bg-white/90 backdrop-blur dark:bg-slate-800/90 p-2.5 rounded-xl shadow-lg border border-white/20 text-slate-700 dark:text-slate-300 hover:text-emerald-500 hover:scale-105 transition-all"><MIcon name="zoom-in" size={20}/></button>
-                              <button onClick={() => trackingMapRef.current?.zoomOut()} className="bg-white/90 backdrop-blur dark:bg-slate-800/90 p-2.5 rounded-xl shadow-lg border border-white/20 text-slate-700 dark:text-slate-300 hover:text-emerald-500 hover:scale-105 transition-all"><MIcon name="zoom-out" size={20}/></button>
-                              <button onClick={() => trackingMapRef.current?.setZoom(14)} className="bg-white/90 backdrop-blur dark:bg-slate-800/90 p-2.5 rounded-xl shadow-lg border border-white/20 text-[10px] font-black text-slate-700 dark:text-slate-300 hover:text-emerald-500 hover:scale-105 transition-all">1x</button>
-                          </div>
-                        </main>
-
-                        <aside className="flex-1 lg:flex-none w-full lg:w-[420px] bg-white dark:bg-slate-900 border-t lg:border-t-0 lg:border-l border-slate-200 dark:border-slate-800 flex flex-col z-20">
-                            <div className="p-4 lg:p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-800/50">
-                                <div>
-                                    <h2 className="text-xl font-black text-slate-800 dark:text-white tracking-tight flex items-center gap-2">
-                                        <span className="w-2.5 h-2.5 bg-red-500 rounded-full animate-ping"></span> Live Leaderboard
-                                    </h2>
-                                    <p className="text-[10px] text-slate-500">Race 3 • Target: 12m</p>
-                                </div>
-                                <button onClick={exportCSV} className="bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-400 px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-2 hover:bg-emerald-200 transition-colors">
-                                    <MIcon name="download" size={14} /> <span className="hidden md:inline">{t.trackExport}</span>
-                                </button>
-                            </div>
-
-                            <div className="flex-1 overflow-y-auto p-4">
-                                <table className="w-full text-left">
-                                    <thead>
-                                        <tr className="text-[10px] text-slate-400 uppercase tracking-widest border-b border-slate-100 dark:border-slate-800">
-                                            <th className="pb-3 pl-2">{t.trackPos}</th>
-                                            <th className="pb-3">{t.trackName}</th>
-                                            <th className="pb-3">{t.trackNat}</th>
-                                            <th className="pb-3 text-right pr-2">{t.trackSpeed}</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {liveAthletes.sort((a,b)=>a.pos-b.pos).map(a => (
-                                            <tr key={a.id} className="border-b border-slate-50 dark:border-slate-800/50 hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
-                                                <td className="py-4 pl-2 font-black text-lg text-slate-300 dark:text-slate-600">{a.pos}</td>
-                                                <td className="py-4 font-bold text-sm text-slate-800 dark:text-white">{a.name}</td>
-                                                <td className="py-4"><span className="bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded text-xs font-bold">{a.flag} {a.country}</span></td>
-                                                <td className="py-4 text-right pr-2 text-emerald-600 dark:text-emerald-400 font-mono font-bold">{a.speed}kt</td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </aside>
-                      </>
-                  ) : activeTab === 'results' ? (
-                      /* 🏆 SECÇÃO DE RESULTADOS PROFISSIONAIS */
-                      <div className="flex-1 overflow-y-auto bg-slate-50 dark:bg-slate-950 p-4 lg:p-12 animate-in fade-in duration-500">
-                          <div className="max-w-6xl mx-auto">
-                              <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
-                                  <h2 className="text-3xl font-black text-slate-900 dark:text-white uppercase flex items-center gap-3">
-                                      <MIcon name="list-ordered" className="text-emerald-500" size={32}/> {t.tabResults}
-                                  </h2>
-                                  <div className="flex bg-white dark:bg-slate-900 p-1.5 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-x-auto no-scrollbar shrink-0">
-                                      <button onClick={() => setResTab('overall')} className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${resTab === 'overall' ? 'bg-slate-800 dark:bg-slate-700 text-white' : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white'}`}>{t.resOverall}</button>
-                                      <button onClick={() => setResTab('races')} className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${resTab === 'races' ? 'bg-slate-800 dark:bg-slate-700 text-white' : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white'}`}>{t.resRaces}</button>
-                                      <button onClick={() => setResTab('medal')} className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${resTab === 'medal' ? 'bg-amber-500 text-white' : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white'}`}>{t.resMedal}</button>
-                                  </div>
-                              </div>
-
-                              <div className="bg-white dark:bg-slate-900 rounded-[1.5rem] shadow-xl border border-slate-100 dark:border-slate-800 overflow-hidden overflow-x-auto">
-                                  <table className="w-full text-left min-w-[600px]">
-                                      <thead>
-                                          <tr className="bg-slate-50 dark:bg-slate-800/50 text-[10px] text-slate-500 dark:text-slate-400 uppercase tracking-widest border-b border-slate-200 dark:border-slate-700">
-                                              <th className="p-4 pl-6 w-16">{t.trackPos}</th>
-                                              <th className="p-4 w-24">{t.trackNat}</th>
-                                              <th className="p-4">{t.trackName}</th>
-                                              {resTab === 'overall' && <th className="p-4 text-right pr-8">{t.resPts}</th>}
-                                              {resTab === 'races' && (
-                                                  <React.Fragment>
-                                                      <th className="p-4 text-center">R1</th><th className="p-4 text-center">R2</th><th className="p-4 text-center">R3</th><th className="p-4 text-center">R4</th><th className="p-4 text-right pr-6">NET</th>
-                                                  </React.Fragment>
-                                              )}
-                                              {resTab === 'medal' && <th className="p-4 text-right pr-8">STATUS</th>}
-                                          </tr>
-                                      </thead>
-                                      <tbody>
-                                          {(resTab === 'medal' ? resultsMedal : resultsOverall).map((ath, idx) => (
-                                              <tr key={idx} className="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors group">
-                                                  <td className="p-4 pl-6 font-black text-lg text-slate-400 dark:text-slate-500 group-hover:text-emerald-500">
-                                                      {ath.pos === 1 && <MIcon name="trophy" size={20} className="text-yellow-500" />}
-                                                      {ath.pos === 2 && <MIcon name="medal" size={20} className="text-slate-400" />}
-                                                      {ath.pos === 3 && <MIcon name="medal" size={20} className="text-amber-600" />}
-                                                      {ath.pos > 3 && ath.pos}
-                                                  </td>
-                                                  <td className="p-4"><span className="bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-md text-xs font-bold border border-slate-200 dark:border-slate-700">{ath.flag} {ath.nat}</span></td>
-                                                  <td className="p-4 font-bold text-sm lg:text-base text-slate-800 dark:text-white">{ath.name}</td>
-                                                  
-                                                  {resTab === 'overall' && <td className="p-4 text-right pr-8 font-black text-lg text-emerald-600 dark:text-emerald-400">{ath.net}</td>}
-                                                  
-                                                  {resTab === 'races' && (
-                                                      <React.Fragment>
-                                                          <td className={`p-4 text-center text-sm font-medium ${ath.r1.toString().includes('(') ? 'text-red-400 line-through' : 'text-slate-600 dark:text-slate-300'}`}>{ath.r1}</td>
-                                                          <td className={`p-4 text-center text-sm font-medium ${ath.r2.toString().includes('(') ? 'text-red-400 line-through' : 'text-slate-600 dark:text-slate-300'}`}>{ath.r2}</td>
-                                                          <td className={`p-4 text-center text-sm font-medium ${ath.r3.toString().includes('(') ? 'text-red-400 line-through' : 'text-slate-600 dark:text-slate-300'}`}>{ath.r3}</td>
-                                                          <td className={`p-4 text-center text-sm font-medium ${ath.r4.toString().includes('(') ? 'text-red-400 line-through' : 'text-slate-600 dark:text-slate-300'}`}>{ath.r4}</td>
-                                                          <td className="p-4 text-right pr-6 font-black text-emerald-600 dark:text-emerald-400">{ath.net}</td>
-                                                      </React.Fragment>
-                                                  )}
-
-                                                  {resTab === 'medal' && (
-                                                      <td className="p-4 text-right pr-8">
-                                                          <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${
-                                                              ath.status === 'WINNER' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' :
-                                                              ath.status === 'FINALIST' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
-                                                              'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
-                                                          }`}>{ath.status}</span>
-                                                      </td>
-                                                  )}
-                                              </tr>
+                          {/* TAB: MAPA */}
+                          {activeTab === 'map' && (
+                              <>
+                                  <main className="flex-none h-[50vh] lg:h-auto lg:flex-1 relative bg-slate-900">
+                                      <div id="real-map" className="w-full h-full absolute inset-0"></div>
+                                  </main>
+                                  <aside className="flex-1 lg:flex-none w-full lg:w-[350px] bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800 flex flex-col z-20">
+                                      <div className="p-4 border-b border-slate-100 dark:border-slate-800">
+                                          <h3 className="font-black text-slate-800 dark:text-white">{t.poiTitle}</h3>
+                                      </div>
+                                      <div className="flex-1 overflow-y-auto p-4 space-y-2">
+                                          {filteredLocations.map(loc => (
+                                              <button key={loc.id} onClick={() => setSelectedPoint(loc)} className="w-full p-3 rounded-xl border border-slate-100 dark:border-slate-700 flex items-center gap-3 text-left">
+                                                  <div className={`w-10 h-10 rounded-lg ${loc.twColor} flex items-center justify-center text-white`}>
+                                                      {React.cloneElement(loc.icon, { className: "w-5 h-5" })}
+                                                  </div>
+                                                  <div>
+                                                      <h4 className="font-bold text-xs text-slate-800 dark:text-white">{loc.name}</h4>
+                                                      <p className="text-[10px] text-slate-500">{loc.type.toUpperCase()}</p>
+                                                  </div>
+                                              </button>
                                           ))}
-                                      </tbody>
-                                  </table>
-                              </div>
-                          </div>
-                      </div>
-                  ) : activeTab === 'athletes' ? (
-                      /* 🏄 SECÇÃO ATLETAS */
-                      <div className="flex-1 overflow-y-auto bg-slate-50 dark:bg-slate-950 p-4 lg:p-12 animate-in fade-in duration-500">
-                          <div className="max-w-7xl mx-auto">
-                              <h2 className="text-3xl font-black text-slate-900 dark:text-white uppercase mb-8 flex items-center gap-3">
-                                  <MIcon name="users" className="text-emerald-500" size={32}/> {t.tabAthletes} Top 10
-                              </h2>
-                              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                                  {athleteProfiles.map((ath, idx) => (
-                                      <div key={idx} className="bg-white dark:bg-slate-900 rounded-[2rem] p-6 shadow-xl border border-slate-100 dark:border-slate-800 flex flex-col relative group hover:-translate-y-2 transition-transform">
-                                          <div className="absolute top-4 right-4 bg-slate-900 dark:bg-emerald-500 text-white font-mono px-2.5 py-1 rounded-lg text-xs font-black shadow-md flex items-center gap-1">
-                                              <MIcon name="wind" size={12} /> {ath.sail}
-                                          </div>
-                                          
-                                          <div className="flex flex-col items-center text-center mt-4">
-                                              <div className="w-20 h-20 lg:w-24 lg:h-24 rounded-full bg-slate-100 dark:bg-slate-800 mb-4 flex items-center justify-center text-4xl shadow-inner border-4 border-emerald-500/20 group-hover:border-emerald-500 transition-colors">
-                                                  {ath.flag}
-                                              </div>
-                                              <h3 className="text-lg lg:text-xl font-black text-slate-800 dark:text-white leading-tight">{ath.name}</h3>
-                                              <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-widest">{ath.nat}</p>
-                                              
-                                              <span className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-3 py-1 rounded-full text-[10px] lg:text-xs font-bold mt-3 border border-slate-200 dark:border-slate-700">
-                                                  {t.athRank}: #{ath.rank}
-                                              </span>
-                                              
-                                              <p className="text-xs lg:text-sm text-slate-500 dark:text-slate-400 mt-4 font-medium leading-snug">{ath.desc}</p>
-                                          </div>
+                                      </div>
+                                  </aside>
+                              </>
+                          )}
 
-                                          <div className="mt-auto pt-5 w-full border-t border-slate-100 dark:border-slate-800 flex flex-col gap-2">
-                                              <div className="flex justify-between items-center bg-slate-50 dark:bg-slate-800/50 px-3 py-2 rounded-lg">
-                                                  <span className="text-[9px] text-slate-400 uppercase tracking-widest font-bold">Sponsor</span>
-                                                  <span className="text-xs font-bold text-slate-700 dark:text-slate-200">{ath.gear}</span>
+                          {/* TAB: TRACKING */}
+                          {activeTab === 'tracking' && (
+                              <>
+                                  <main className="flex-none h-[50vh] lg:h-auto lg:flex-1 relative bg-slate-900">
+                                      <div id="tracking-map" className="w-full h-full absolute inset-0"></div>
+                                  </main>
+                                  <aside className="flex-1 lg:flex-none w-full lg:w-[350px] bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800 flex flex-col z-20">
+                                      <div className="p-4 border-b border-slate-100 dark:border-slate-800">
+                                          <h2 className="text-lg font-black text-slate-800 dark:text-white flex items-center gap-2">Live Leaderboard</h2>
+                                      </div>
+                                      <div className="flex-1 overflow-y-auto p-4">
+                                          <table className="w-full text-left text-sm">
+                                              <thead>
+                                                  <tr className="text-[10px] text-slate-400 uppercase"><th className="pb-2">POS</th><th className="pb-2">NAME</th><th className="pb-2 text-right">SPEED</th></tr>
+                                              </thead>
+                                              <tbody>
+                                                  {liveAthletes.sort((a,b)=>a.pos-b.pos).map(a => (
+                                                      <tr key={a.id} className="border-b border-slate-100 dark:border-slate-800">
+                                                          <td className="py-3 font-black">{a.pos}</td>
+                                                          <td className="py-3 font-bold">{a.name} <span className="text-[10px] bg-slate-100 dark:bg-slate-800 px-1 py-0.5 rounded">{a.country}</span></td>
+                                                          <td className="py-3 text-right text-emerald-500 font-bold">{a.speed}kt</td>
+                                                      </tr>
+                                                  ))}
+                                              </tbody>
+                                          </table>
+                                      </div>
+                                  </aside>
+                              </>
+                          )}
+
+                          {/* TAB: RESULTS */}
+                          {activeTab === 'results' && (
+                              <div className="flex-1 overflow-y-auto p-6 lg:p-12">
+                                  <h2 className="text-2xl font-black mb-6">{t.tabResults}</h2>
+                                  <div className="bg-white dark:bg-slate-900 rounded-2xl shadow border border-slate-200 dark:border-slate-800 overflow-hidden">
+                                      <table className="w-full text-left">
+                                          <thead>
+                                              <tr className="bg-slate-50 dark:bg-slate-800/50 text-xs text-slate-500"><th className="p-4">POS</th><th className="p-4">NATION</th><th className="p-4">ATHLETE</th><th className="p-4 text-right">POINTS</th></tr>
+                                          </thead>
+                                          <tbody>
+                                              {resultsOverall.map((ath, idx) => (
+                                                  <tr key={idx} className="border-t border-slate-100 dark:border-slate-800">
+                                                      <td className="p-4 font-black">{ath.pos}</td>
+                                                      <td className="p-4">{ath.flag} {ath.nat}</td>
+                                                      <td className="p-4 font-bold">{ath.name}</td>
+                                                      <td className="p-4 text-right font-bold text-emerald-500">{ath.net}</td>
+                                                  </tr>
+                                              ))}
+                                          </tbody>
+                                      </table>
+                                  </div>
+                              </div>
+                          )}
+
+                          {/* TAB: ATHLETES */}
+                          {activeTab === 'athletes' && (
+                              <div className="flex-1 overflow-y-auto p-6 lg:p-12">
+                                  <h2 className="text-2xl font-black mb-6">{t.tabAthletes}</h2>
+                                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                      {athleteProfiles.map((ath, idx) => (
+                                          <div key={idx} className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow border border-slate-200 dark:border-slate-800 flex flex-col items-center">
+                                              <div className="text-4xl mb-4">{ath.flag}</div>
+                                              <h3 className="font-bold text-lg">{ath.name}</h3>
+                                              <p className="text-xs text-slate-500">{ath.nat} | {t.athRank} #{ath.rank}</p>
+                                          </div>
+                                      ))}
+                                  </div>
+                              </div>
+                          )}
+
+                          {/* TAB: HOTEL */}
+                          {activeTab === 'hotel' && (
+                              <div className="flex-1 overflow-y-auto p-6 lg:p-12">
+                                  <h2 className="text-2xl font-black mb-6">{t.tabHotel}</h2>
+                                  <div className="bg-slate-900 rounded-2xl p-8 text-white max-w-2xl">
+                                      <h3 className="text-3xl font-black text-emerald-400 mb-2">{t.hotelName}</h3>
+                                      <p className="mb-6">{t.hotelDesc}</p>
+                                      <a href="https://feelviana.com/" target="_blank" className="bg-emerald-500 px-6 py-3 rounded-lg font-bold">Visitar Site</a>
+                                  </div>
+                              </div>
+                          )}
+
+                          {/* TAB: SCHEDULE */}
+                          {activeTab === 'schedule' && (
+                              <div className="flex-1 overflow-y-auto p-6 lg:p-12">
+                                  <h2 className="text-2xl font-black mb-6">{t.tabSchedule}</h2>
+                                  <div className="space-y-4 max-w-3xl">
+                                      {eventSchedule.map((item, idx) => (
+                                          <div key={idx} className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow border border-slate-200 dark:border-slate-800 flex items-center justify-between">
+                                              <div>
+                                                  <span className="font-black text-lg text-emerald-500">{item.date}</span>
+                                                  <h4 className="font-bold">{item.activity}</h4>
                                               </div>
-                                              <div className="flex justify-between items-center bg-sky-50 dark:bg-sky-900/20 px-3 py-2 rounded-lg border border-sky-100 dark:border-sky-900/30">
-                                                  <span className="text-[9px] text-sky-600 dark:text-sky-400 uppercase tracking-widest font-bold">{t.athKite}</span>
-                                                  <span className="text-[11px] font-black text-sky-800 dark:text-sky-300">{ath.kites}</span>
+                                              <div className="text-right text-sm text-slate-500 font-bold">{item.time}</div>
+                                          </div>
+                                      ))}
+                                  </div>
+                              </div>
+                          )}
+
+                          {/* TAB: AI */}
+                          {activeTab === 'ai' && (
+                              <div className="flex-1 flex flex-col bg-slate-100 dark:bg-slate-900">
+                                  <div className="flex-1 p-6 overflow-y-auto space-y-4">
+                                      {chatHistory.map((msg, index) => (
+                                          <div key={index} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                                              <div className={`p-4 rounded-2xl max-w-[80%] ${msg.role === 'user' ? 'bg-slate-800 text-white' : 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-900 dark:text-white'}`}>
+                                                  {msg.text}
                                               </div>
+                                          </div>
+                                      ))}
+                                  </div>
+                                  <div className="p-4 bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 flex gap-2">
+                                      <input type="text" value={chatInput} onChange={e => setChatInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSendChat()} className="flex-1 bg-slate-100 dark:bg-slate-900 rounded-xl px-4 py-3 outline-none" placeholder={t.aiPlaceholder} />
+                                      <button onClick={handleSendChat} className="bg-emerald-500 text-white px-6 rounded-xl font-bold">Enviar</button>
+                                  </div>
+                              </div>
+                          )}
+
+                          {/* TAB: SETTINGS */}
+                          {activeTab === 'settings' && (
+                              <div className="flex-1 overflow-y-auto p-6 lg:p-12">
+                                  <h2 className="text-2xl font-black mb-6">{t.tabSettings}</h2>
+                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl">
+                                      <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow border border-slate-200 dark:border-slate-800">
+                                          <h3 className="font-bold mb-4">{t.settingsLang}</h3>
+                                          <div className="flex gap-4">
+                                              <button onClick={() => setLang('pt')} className={`flex-1 py-3 rounded-lg border-2 ${lang === 'pt' ? 'border-emerald-500' : 'border-transparent bg-slate-100 dark:bg-slate-800'}`}>🇵🇹 PT</button>
+                                              <button onClick={() => setLang('en')} className={`flex-1 py-3 rounded-lg border-2 ${lang === 'en' ? 'border-emerald-500' : 'border-transparent bg-slate-100 dark:bg-slate-800'}`}>🇬🇧 EN</button>
                                           </div>
                                       </div>
-                                  ))}
-                              </div>
-                          </div>
-                      </div>
-                  ) : activeTab === 'hotel' ? (
-                      /* 🏨 SECÇÃO HOTEL FEELVIANA */
-                      <div className="flex-1 overflow-y-auto bg-slate-50 dark:bg-slate-950 p-4 lg:p-12 animate-in fade-in duration-500">
-                          <div className="max-w-4xl mx-auto space-y-8">
-                              <div className="w-full bg-slate-900 rounded-[2rem] relative overflow-hidden shadow-2xl border border-slate-800">
-                                  <img src="https://images.unsplash.com/photo-1566073771259-6a8506099945?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80" className="w-full h-64 md:h-96 object-cover opacity-60" alt="FeelViana Hotel" />
-                                  <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/40 to-transparent flex flex-col justify-end p-8 lg:p-12">
-                                      <span className="text-emerald-400 font-black uppercase tracking-widest text-xs mb-2 flex items-center gap-2">
-                                          <MIcon name="bookmark" size={14} /> {t.hotelTitle}
-                                      </span>
-                                      <h2 className="text-3xl md:text-5xl font-black text-white mb-4 leading-tight">{t.hotelName}</h2>
-                                      <p className="text-slate-300 max-w-2xl text-sm md:text-base mb-8">{t.hotelDesc}</p>
-                                      <div className="flex flex-col sm:flex-row gap-4">
-                                          <a href="https://feelviana.com/" target="_blank" rel="noopener noreferrer" className="bg-emerald-500 hover:bg-emerald-400 text-white font-bold py-3 px-6 rounded-xl flex items-center justify-center gap-2 transition-colors shadow-lg">
-                                              <MIcon name="calendar-check" size={18} /> {t.hotelBook}
-                                          </a>
-                                          <a href="https://feelviana.com/" target="_blank" rel="noopener noreferrer" className="bg-white/10 hover:bg-white/20 backdrop-blur-md text-white border border-white/20 font-bold py-3 px-6 rounded-xl flex items-center justify-center gap-2 transition-colors">
-                                              <MIcon name="globe" size={18} /> {t.hotelWebsite}
-                                          </a>
-                                      </div>
-                                  </div>
-                              </div>
-                              
-                              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                  <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
-                                      <MIcon name="map-pin" className="text-blue-500 mb-4 w-8 h-8" />
-                                      <h4 className="font-bold text-slate-800 dark:text-white">Localização Premium</h4>
-                                      <p className="text-sm text-slate-500 mt-2">Acesso direto à Praia do Cabedelo e à "Race Area".</p>
-                                  </div>
-                                  <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
-                                      <MIcon name="wind" className="text-emerald-500 mb-4 w-8 h-8" />
-                                      <h4 className="font-bold text-slate-800 dark:text-white">Sports Center</h4>
-                                      <p className="text-sm text-slate-500 mt-2">Equipado para todas as necessidades dos atletas de Kite e Foil.</p>
-                                  </div>
-                                  <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
-                                      <MIcon name="coffee" className="text-amber-500 mb-4 w-8 h-8" />
-                                      <h4 className="font-bold text-slate-800 dark:text-white">Spa & Recuperação</h4>
-                                      <p className="text-sm text-slate-500 mt-2">Serviços de bem-estar para recuperação pós-regata.</p>
-                                  </div>
-                              </div>
-                          </div>
-                      </div>
-                  ) : activeTab === 'schedule' ? (
-                    <div className="flex-1 overflow-y-auto bg-slate-50 dark:bg-slate-950 p-4 lg:p-12 animate-in fade-in duration-500 transition-colors">
-                      <div className="max-w-4xl mx-auto pb-8">
-                        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 lg:gap-6 mb-6 lg:mb-12 bg-white dark:bg-slate-900 p-6 lg:p-8 rounded-2xl lg:rounded-[2.5rem] shadow-sm border border-slate-100 dark:border-slate-800 transition-colors">
-                          <div>
-                            <h2 className="text-2xl lg:text-4xl font-black text-slate-900 dark:text-white tracking-tighter uppercase leading-none">
-                              {t.schedTitle}
-                            </h2>
-                          </div>
-                          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-                              <div className="inline-flex items-center gap-2 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-3 py-1.5 lg:px-4 lg:py-2 rounded-lg lg:rounded-xl font-bold text-xs lg:text-sm border border-blue-100 dark:border-blue-800">
-                                <MIcon name="info" size={16} className="lg:w-[18px] lg:h-[18px]" /> {t.schedDoc}
-                              </div>
-                              <button onClick={exportCalendar} className="inline-flex items-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-1.5 lg:px-4 lg:py-2 rounded-lg lg:rounded-xl font-bold text-xs lg:text-sm transition-colors shadow-sm cursor-pointer">
-                                <MIcon name="calendar-plus" size={16} className="lg:w-[18px] lg:h-[18px]" /> {lang === 'pt' ? 'Sincronizar Tudo' : 'Sync All'}
-                              </button>
-                          </div>
-                        </div>
-
-                        <div className="space-y-3 lg:space-y-4">
-                          {eventSchedule.map((item, idx) => (
-                            <div key={idx} className="bg-white dark:bg-slate-900 p-5 lg:p-6 rounded-2xl lg:rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-md transition-shadow flex flex-col md:flex-row md:items-center gap-3 lg:gap-6 group">
-                              <div className="w-auto md:w-24 shrink-0 flex items-center justify-between md:block">
-                                <span className="text-lg lg:text-2xl font-black text-slate-800 dark:text-slate-100 md:text-slate-300 dark:md:text-slate-700">{item.date}</span>
-                                <span className={`md:hidden inline-block px-3 py-1 rounded-md text-[9px] font-black uppercase tracking-widest ${
-                                  item.status === 'race' ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300' :
-                                  item.status === 'final' ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300' :
-                                  item.status === 'setup' ? 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400' :
-                                  'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300'
-                                }`}>
-                                  {item.status}
-                                </span>
-                              </div>
-                              <div className="flex-1 md:border-l-2 border-slate-100 dark:border-slate-800 md:pl-6">
-                                <h4 className="font-black text-sm lg:text-lg text-slate-800 dark:text-slate-100">{item.activity}</h4>
-                                <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400 text-xs lg:text-sm mt-1 lg:mt-2 font-medium">
-                                  <MIcon name="clock" size={14} className="text-emerald-500 lg:w-4 lg:h-4" /> {item.time}
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-
-                        <div className="mt-8 lg:mt-12 grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-6">
-                          <div className="bg-slate-900 dark:bg-black text-white p-6 lg:p-8 rounded-2xl lg:rounded-[2.5rem] shadow-xl relative overflow-hidden border border-transparent dark:border-slate-800">
-                            <h5 className="font-black text-[10px] lg:text-xs text-emerald-400 uppercase tracking-widest mb-4 lg:mb-6 flex items-center gap-2">
-                              <MIcon name="check-circle" size={14} className="lg:w-4 lg:h-4" /> {t.schedRulesTitle}
-                            </h5>
-                            <div className="space-y-4 lg:space-y-5 relative z-10">
-                              <div>
-                                <span className="text-[10px] lg:text-xs font-bold text-slate-400">Target Time (Opening)</span>
-                                <p className="text-xl lg:text-2xl font-black">12 {lang === 'pt' ? 'minutos' : 'minutes'}</p>
-                              </div>
-                              <div className="h-px bg-white/10 w-full"></div>
-                              <div>
-                                <span className="text-[10px] lg:text-xs font-bold text-slate-400">Target Time (Medal Series)</span>
-                                <p className="text-xl lg:text-2xl font-black">7 {lang === 'pt' ? 'minutos' : 'minutes'}</p>
-                              </div>
-                            </div>
-                            <MIcon name="waves" size={128} className="absolute -right-4 -bottom-4 w-24 h-24 lg:w-32 lg:h-32 text-white/5" />
-                          </div>
-
-                          <div className="bg-white dark:bg-slate-900 p-6 lg:p-8 rounded-2xl lg:rounded-[2.5rem] border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden flex flex-col justify-between transition-colors">
-                            <div>
-                              <h5 className="font-black text-[10px] lg:text-xs text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-4 lg:mb-6">{t.schedRulesDesc}</h5>
-                              <ul className="space-y-3 lg:space-y-4 text-xs lg:text-sm font-semibold text-slate-600 dark:text-slate-300 relative z-10">
-                                <li className="flex gap-2 lg:gap-3"><span className="text-emerald-500">•</span><span>{t.rule1}</span></li>
-                                <li className="flex gap-2 lg:gap-3"><span className="text-emerald-500">•</span><span>{t.rule2}</span></li>
-                                <li className="flex gap-2 lg:gap-3"><span className="text-emerald-500">•</span><span>{t.rule3}</span></li>
-                              </ul>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ) : activeTab === 'ai' ? (
-                      <div className="flex-1 flex flex-col bg-slate-100 dark:bg-slate-950 overflow-hidden animate-in fade-in duration-500 transition-colors">
-                        <div className="bg-emerald-900 dark:bg-emerald-950 text-white p-4 lg:p-6 shadow-md shrink-0 border-b border-emerald-800 z-10">
-                          <div className="max-w-4xl mx-auto">
-                            <h2 className="text-lg lg:text-2xl font-black tracking-tight flex items-center gap-2 lg:gap-3 text-emerald-100">
-                              <MIcon name="sparkles" size={18} className="text-emerald-400 lg:w-6 lg:h-6" /> {t.aiTitle}
-                            </h2>
-                            <p className="text-emerald-400/80 text-[10px] lg:text-sm font-medium mt-1">{t.aiDisclaimer}</p>
-                          </div>
-                        </div>
-
-                        <div className="flex-1 overflow-y-auto p-3 lg:p-8 space-y-4 lg:space-y-6 scroll-smooth">
-                          <div className="max-w-4xl mx-auto space-y-4 lg:space-y-6 pb-2">
-                            {chatHistory.map((msg, index) => (
-                              <div key={index} className={`flex gap-3 lg:gap-4 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}>
-                                <div className={`w-8 h-8 lg:w-10 lg:h-10 rounded-full flex items-center justify-center shrink-0 shadow-sm ${msg.role === 'user' ? 'bg-slate-800 dark:bg-slate-700 text-white' : 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600 dark:text-emerald-400'}`}>
-                                  <MIcon name={msg.role === 'user' ? 'user' : 'bot'} size={16} className="lg:w-5 lg:h-5" />
-                                </div>
-                                <div className={`px-4 py-3 lg:px-5 lg:py-4 rounded-2xl lg:rounded-[2rem] max-w-[85%] text-sm lg:text-base shadow-sm ${
-                                  msg.role === 'user' 
-                                  ? 'bg-slate-800 dark:bg-slate-700 text-white rounded-tr-none' 
-                                  : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 rounded-tl-none border border-slate-100 dark:border-slate-800 leading-relaxed'
-                                }`}>
-                                  {msg.text.split('\n').map((line, i) => (
-                                    <p key={i} className={i !== 0 ? 'mt-1 lg:mt-2' : ''}>{line}</p>
-                                  ))}
-                                </div>
-                              </div>
-                            ))}
-                            
-                            {isTyping && (
-                              <div className="flex gap-3 lg:gap-4">
-                                <div className="w-8 h-8 lg:w-10 lg:h-10 rounded-full bg-emerald-100 dark:bg-slate-900/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 shadow-sm">
-                                  <MIcon name="sparkles" size={16} className="animate-spin-slow lg:w-5 lg:h-5" />
-                                </div>
-                                <div className="px-5 py-3 lg:px-6 lg:py-4 rounded-2xl lg:rounded-[2rem] bg-white dark:bg-slate-900 text-slate-500 rounded-tl-none border border-slate-100 dark:border-slate-800 shadow-sm flex items-center gap-1.5 h-[42px] lg:h-[56px]">
-                                  <div className="w-1.5 h-1.5 lg:w-2 lg:h-2 bg-emerald-400 rounded-full typing-dot" />
-                                  <div className="w-1.5 h-1.5 lg:w-2 lg:h-2 bg-emerald-400 rounded-full typing-dot" />
-                                  <div className="w-1.5 h-1.5 lg:w-2 lg:h-2 bg-emerald-400 rounded-full typing-dot" />
-                                </div>
-                              </div>
-                            )}
-                            <div ref={chatEndRef} />
-                          </div>
-                        </div>
-
-                        <div className="bg-white dark:bg-slate-900 p-3 lg:p-4 border-t border-slate-200 dark:border-slate-800 shrink-0 pb-safe transition-colors z-10">
-                          <div className="max-w-4xl mx-auto relative flex items-center">
-                            <input 
-                              type="text" 
-                              value={chatInput}
-                              onChange={(e) => setChatInput(e.target.value)}
-                              onKeyDown={(e) => e.key === 'Enter' && handleSendChat()}
-                              placeholder={t.aiPlaceholder}
-                              className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-white rounded-full py-3 lg:py-4 pl-4 lg:pl-6 pr-14 lg:pr-16 text-sm lg:text-base outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all shadow-inner"
-                              disabled={isTyping}
-                            />
-                            <button 
-                              onClick={() => handleSendChat()}
-                              disabled={isTyping || !chatInput.trim()}
-                              className="absolute right-1.5 lg:right-2 w-10 h-10 lg:w-11 lg:h-11 rounded-full bg-emerald-500 text-white flex items-center justify-center hover:bg-emerald-600 disabled:opacity-50 disabled:hover:bg-emerald-500 transition-colors shadow-sm"
-                            >
-                              <MIcon name="send" size={16} className={`${chatInput.trim() ? 'ml-1' : ''} lg:w-[18px] lg:h-[18px]`} />
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                  ) : (
-                      /* Settings */
-                      <div className="flex-1 overflow-y-auto bg-slate-50 dark:bg-slate-950 p-4 lg:p-12 animate-in fade-in duration-500 transition-colors">
-                          <div className="max-w-4xl mx-auto pb-12">
-                              <h2 className="text-2xl lg:text-3xl font-black mb-8 dark:text-white mt-4">{t.settingsTitle}</h2>
-                              
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                  {/* Coluna 1: Definições da App */}
-                                  <div className="space-y-6">
-                                      <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-800 transition-colors">
-                                          <h3 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-4 flex items-center gap-2">
-                                              <MIcon name="globe" size={16} /> {t.settingsLang}
-                                          </h3>
-                                          <div className="grid grid-cols-2 gap-3">
-                                              <button onClick={() => setLang('pt')} className={`py-3 rounded-xl font-bold text-sm transition-all border-2 ${lang === 'pt' ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 shadow-sm' : 'border-transparent bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'}`}>🇵🇹 Português</button>
-                                              <button onClick={() => setLang('en')} className={`py-3 rounded-xl font-bold text-sm transition-all border-2 ${lang === 'en' ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 shadow-sm' : 'border-transparent bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'}`}>🇬🇧 English</button>
-                                          </div>
-                                      </div>
-
-                                      <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-800 transition-colors">
-                                          <h3 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-4 flex items-center gap-2">
-                                              <MIcon name="sun" size={16} /> {t.settingsTheme}
-                                          </h3>
-                                          <div className="grid grid-cols-2 gap-3">
-                                              <button onClick={() => setIsDarkMode(false)} className={`py-3 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 border-2 ${!isDarkMode ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 shadow-sm' : 'border-transparent bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'}`}>
-                                                  <MIcon name="sun" size={16} /> {t.themeLight || 'Claro'}
-                                              </button>
-                                              <button onClick={() => setIsDarkMode(true)} className={`py-3 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 border-2 ${isDarkMode ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 shadow-sm' : 'border-transparent bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'}`}>
-                                                  <MIcon name="moon" size={16} /> {t.themeDark || 'Escuro'}
-                                              </button>
+                                      <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow border border-slate-200 dark:border-slate-800">
+                                          <h3 className="font-bold mb-4">{t.settingsTheme}</h3>
+                                          <div className="flex gap-4">
+                                              <button onClick={() => setIsDarkMode(false)} className={`flex-1 py-3 rounded-lg border-2 ${!isDarkMode ? 'border-emerald-500' : 'border-transparent bg-slate-100 dark:bg-slate-800'}`}>{t.themeLight}</button>
+                                              <button onClick={() => setIsDarkMode(true)} className={`flex-1 py-3 rounded-lg border-2 ${isDarkMode ? 'border-emerald-500' : 'border-transparent bg-slate-100 dark:bg-slate-800'}`}>{t.themeDark}</button>
                                           </div>
                                       </div>
                                   </div>
-
-                                  {/* Coluna 2: Parceiros Institucionais */}
-                                  <div className="bg-white dark:bg-slate-900 p-6 lg:p-8 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-800 transition-colors">
-                                      <h3 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-6 flex items-center gap-2">
-                                          <MIcon name="building" size={16} /> {t.settingsPartners}
-                                      </h3>
-                                      
-                                      <div className="space-y-4">
-                                          <a href="https://fpvela.pt" target="_blank" rel="noopener noreferrer" className="flex items-center gap-4 p-3 rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group border border-transparent hover:border-slate-200 dark:hover:border-slate-700">
-                                              <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-xl flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                                                  <MIcon name="flag" size={24} />
-                                              </div>
-                                              <div className="flex-1">
-                                                  <h4 className="font-bold text-sm text-slate-800 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">Federação Portuguesa de Vela</h4>
-                                                  <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-tight mt-0.5">{t.partnerFPVDesc}</p>
-                                              </div>
-                                              <MIcon name="external-link" size={16} className="text-slate-300 dark:text-slate-600 group-hover:text-blue-500" />
-                                          </a>
-
-                                          <a href="https://kiteclasses.org" target="_blank" rel="noopener noreferrer" className="flex items-center gap-4 p-3 rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group border border-transparent hover:border-slate-200 dark:hover:border-slate-700">
-                                              <div className="w-12 h-12 bg-sky-100 dark:bg-sky-900/30 text-sky-600 dark:text-sky-400 rounded-xl flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                                                  <MIcon name="wind" size={24} />
-                                              </div>
-                                              <div className="flex-1">
-                                                  <h4 className="font-bold text-sm text-slate-800 dark:text-white group-hover:text-sky-600 dark:group-hover:text-sky-400 transition-colors">IKA</h4>
-                                                  <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-tight mt-0.5">{t.partnerIKADesc}</p>
-                                              </div>
-                                              <MIcon name="external-link" size={16} className="text-slate-300 dark:text-slate-600 group-hover:text-sky-500" />
-                                          </a>
-
-                                          <a href="https://sailing.org" target="_blank" rel="noopener noreferrer" className="flex items-center gap-4 p-3 rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group border border-transparent hover:border-slate-200 dark:hover:border-slate-700">
-                                              <div className="w-12 h-12 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-xl flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                                                  <MIcon name="compass" size={24} />
-                                              </div>
-                                              <div className="flex-1">
-                                                  <h4 className="font-bold text-sm text-slate-800 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">World Sailing</h4>
-                                                  <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-tight mt-0.5">{t.partnerWSDesc}</p>
-                                              </div>
-                                              <MIcon name="external-link" size={16} className="text-slate-300 dark:text-slate-600 group-hover:text-indigo-500" />
-                                          </a>
-
-                                          <a href="https://modoexpertoschool.com/kitesurf/" target="_blank" rel="noopener noreferrer" className="flex items-center gap-4 p-3 rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group border border-transparent hover:border-slate-200 dark:hover:border-slate-700">
-                                              <div className="w-12 h-12 bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 rounded-xl flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                                                  <MIcon name="star" size={24} />
-                                              </div>
-                                              <div className="flex-1">
-                                                  <h4 className="font-bold text-sm text-slate-800 dark:text-white group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors">Modo Experto School</h4>
-                                                  <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-tight mt-0.5">{t.partnerModoDesc}</p>
-                                              </div>
-                                              <MIcon name="external-link" size={16} className="text-slate-300 dark:text-slate-600 group-hover:text-amber-500" />
-                                          </a>
-                                          
-                                          <a href="https://feelviana.com/" target="_blank" rel="noopener noreferrer" className="flex items-center gap-4 p-3 rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group border border-transparent hover:border-slate-200 dark:hover:border-slate-700">
-                                              <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 rounded-xl flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                                                  <MIcon name="building" size={24} />
-                                              </div>
-                                              <div className="flex-1">
-                                                  <h4 className="font-bold text-sm text-slate-800 dark:text-white group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors">Hotel FeelViana</h4>
-                                                  <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-tight mt-0.5">{t.partnerFeelVianaDesc}</p>
-                                              </div>
-                                              <MIcon name="external-link" size={16} className="text-slate-300 dark:text-slate-600 group-hover:text-purple-500" />
-                                          </a>
-                                      </div>
-                                  </div>
                               </div>
-                          </div>
-                      </div>
-                  )}
+                          )}
 
-                </div>
-              </div>
+                      </div>
+                  </div>
               )}
             </div>
           );
