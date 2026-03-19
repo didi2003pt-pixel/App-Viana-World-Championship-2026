@@ -16,7 +16,6 @@
         // Se a chave 'acesso_permitido' não for 'sim', redireciona para a página de login
         try {
             if (localStorage.getItem('acesso_permitido') !== 'sim') {
-                // Previne o SyntaxError em ambientes de preview (blob:) onde URLs relativas falham
                 if (window.location.protocol !== 'blob:' && window.location.protocol !== 'data:') {
                     window.location.href = 'acesso.html';
                 } else {
@@ -127,11 +126,11 @@
                 officialApp: "App Oficial", partners: "Parceiros Oficiais:",
                 tabMap: "MAPA", tabSchedule: "CALENDÁRIO", tabAI: "ASSISTENTE IA", tabSettings: "DEFINIÇÕES",
                 tabTracking: "TRACKING LIVE", tabAthletes: "ATLETAS", tabHotel: "HOTEL", tabResults: "RESULTADOS",
-                subtitle: "Viana do Castelo", subtitleDates: "9-16 May 2026",
+                subtitle: "Viana do Castelo", subtitleDates: "9 a 17 Maio 2026",
                 filterAll: "Tudo", filterRace: "Regata", filterLogistics: "Logística", filterFanzone: "Público", filterEco: "Reciclagem",
                 backBtn: "Voltar", poiTitle: "PONTOS DE INTERESSE",
                 locationsCount: "LOCAIS", windTitle: "PREVISÃO VENTO", windDir: "DIREÇÃO", windAiBtn: "IA Preditiva",
-                schedTitle: "Calendário Oficial", schedDoc: "Versão 1.1",
+                schedTitle: "Calendário Oficial", schedDoc: "Hosting Agreement",
                 schedRulesTitle: "Limites de Regata", schedRulesDesc: "Regulamento Destacado",
                 rule1: "Max Race Time é 24m (Qualificação) e 14m (Finais).",
                 rule2: "Troca de Kites requer autorização técnica.",
@@ -156,17 +155,18 @@
                 partnerWSDesc: "Federação internacional de vela.",
                 partnerModoDesc: "Escola oficial parceira do evento.",
                 partnerFeelVianaDesc: "Alojamento oficial e parceiro logístico.",
+                partnerNorteDesc: "Turismo do Porto e Norte - Promoção da região.",
                 qualifiersLabel: "QUALIFICAÇÕES", finalsLabel: "FINAIS"
             },
             en: {
                 officialApp: "Official App", partners: "Official Partners:",
                 tabMap: "MAP", tabSchedule: "SCHEDULE", tabAI: "AI ASSISTANT", tabSettings: "SETTINGS",
                 tabTracking: "LIVE TRACKING", tabAthletes: "ATHLETES", tabHotel: "HOTEL", tabResults: "RESULTS",
-                subtitle: "Viana do Castelo", subtitleDates: "May 9-16, 2026",
+                subtitle: "Viana do Castelo", subtitleDates: "May 9-17, 2026",
                 filterAll: "All", filterRace: "Race", filterLogistics: "Logistics", filterFanzone: "Public", filterEco: "Eco / Recycling",
                 backBtn: "Back", poiTitle: "POINTS OF INTEREST",
                 locationsCount: "LOCATIONS", windTitle: "WIND FORECAST", windDir: "DIR", windAiBtn: "AI Predict",
-                schedTitle: "Official Schedule", schedDoc: "Version 1.1",
+                schedTitle: "Official Schedule", schedDoc: "Hosting Agreement",
                 schedRulesTitle: "Race Time Limits", schedRulesDesc: "Key Regulations",
                 rule1: "Max Race Time is 24m (Qualifying) and 14m (Finals).",
                 rule2: "Kite replacement requires technical authorization.",
@@ -191,17 +191,16 @@
                 partnerWSDesc: "International sailing federation.",
                 partnerModoDesc: "Official partner kite school.",
                 partnerFeelVianaDesc: "Official accommodation and logistics.",
-                qualifiersLabel: "QUALIFIERS", finalsLabel: "FINAIS"
+                partnerNorteDesc: "Porto and North Tourism Board - Regional promotion.",
+                qualifiersLabel: "QUALIFIERS", finalsLabel: "FINALS"
             }
         };
 
-        // Simulação do Service Worker (PWA Placeholder)
         if ('serviceWorker' in navigator) {
             console.log("PWA Offline mode ready.");
         }
 
         const App = () => {
-          // --- SPLASH SCREEN STATE ---
           const [showSplash, setShowSplash] = useState(true);
           const [splashFadeOut, setSplashFadeOut] = useState(false);
 
@@ -223,7 +222,6 @@
           const [resTab, setResTab] = useState('overall');
           const [showAR, setShowAR] = useState(false);
 
-          // AI Chat State & Refs
           const [chatHistory, setChatHistory] = useState([]);
           const [chatInput, setChatInput] = useState('');
           const [isTyping, setIsTyping] = useState(false);
@@ -262,16 +260,18 @@
               }
           };
 
-          // --- DADOS DO EVENTO & SCHEDULE ---
+          // --- DADOS DO EVENTO & SCHEDULE (ATUALIZADO COM O HOSTING AGREEMENT) ---
           const eventSchedule = useMemo(() => [
-              { date: '8 Mai', activity: lang === 'pt' ? 'Abertura do Recinto / Registo' : 'Venue Opening / Registration', time: '15:00 - 18:00', status: 'setup', calDates: '20260508T140000Z/20260508T170000Z' },
-              { date: '9 Mai', activity: lang === 'pt' ? 'Inspeção de Equipamento' : 'Equipment Inspection', time: '09:00 - 18:00', status: 'check', calDates: '20260509T080000Z/20260509T170000Z' },
-              { date: '10 Mai', activity: lang === 'pt' ? 'Cerimónia de Abertura' : 'Opening Ceremony', time: '18:00', status: 'event', calDates: '20260510T170000Z/20260510T190000Z' },
-              { date: '11-15 Mai', activity: lang === 'pt' ? 'Opening Series (Qualificação)' : 'Opening Series (Qualifying)', time: '11:00+', status: 'race', calDates: '20260511T100000Z/20260515T170000Z' },
-              { date: '16 Mai', activity: lang === 'pt' ? 'Medal Series & Entrega de Prémios' : 'Medal Series & Prize Giving', time: '12:15 / 18:00', status: 'final', calDates: '20260516T111500Z/20260516T170000Z' },
+              { date: '8 Mai', activity: lang === 'pt' ? 'Chegada, Abertura do Recinto' : 'Arrival, venue opens', time: 'Todo o dia', status: 'setup' },
+              { date: '9 Mai', activity: lang === 'pt' ? 'Registo no local & Sessão Fotográfica' : 'On site registration & Profile Picture Photo Shoot', time: '15:00 - 18:00', status: 'setup' },
+              { date: '10 Mai', activity: lang === 'pt' ? 'Inspeção de Equipamento & Sessão Fotográfica' : 'Equipment Inspection & Profile Picture Photo Shoot', time: '09:00 - 18:00', status: 'check' },
+              { date: '10 Mai', activity: lang === 'pt' ? 'Cerimónia de Abertura / Boas-vindas' : 'Opening Ceremony / Welcome', time: '18:00', status: 'event' },
+              { date: '11-16 Mai', activity: lang === 'pt' ? 'Regatas (Racing)' : 'Racing (See NoR/SI)', time: '11:00+', status: 'race' },
+              { date: '16 Mai', activity: lang === 'pt' ? 'Entrega de Prémios / Cerimónia de Encerramento' : 'Prize Giving / Closing Ceremony', time: '18:00', status: 'final' },
+              { date: '17 Mai', activity: lang === 'pt' ? 'Partida / Encerramento do Recinto' : 'Departure / Venue Closes', time: 'Todo o dia', status: 'setup' },
           ], [lang]);
 
-          // --- TRACKING STATE BASEADO EM COORDENADAS REAIS (LAT/LNG) ---
+          // --- TRACKING STATE ---
           const [liveAthletes, setLiveAthletes] = useState([
               { id: 1, pos: 1, name: 'A. Mazella', country: 'FRA', flag: '🇫🇷', sail: '21', speed: 28, lat: 41.6780, lng: -8.8550 },
               { id: 2, pos: 2, name: 'M. Maeder', country: 'SGP', flag: '🇸🇬', sail: '1', speed: 27, lat: 41.6750, lng: -8.8580 },
@@ -301,8 +301,7 @@
               a.href = url; a.download = 'viana2026_live_ranking.csv'; a.click();
           };
 
-          // --- FUNÇÕES DE CALENDÁRIO ---
-          // Esta é a função para exportar o ficheiro .ics completo gerado pelo utilizador
+          // --- FUNÇÕES DE CALENDÁRIO (Atualizado com o novo schedule) ---
           const exportCalendar = () => {
               const icsContent = `BEGIN:VCALENDAR
 VERSION:2.0
@@ -312,46 +311,64 @@ METHOD:PUBLISH
 BEGIN:VEVENT
 UID:event-0@formulakite2026.com
 DTSTAMP:20260313T093543Z
-DTSTART:20260508T150000Z
+DTSTART:20260508T090000Z
 DTEND:20260508T180000Z
-SUMMARY:Formula Kite 2026 - Abertura do Recinto / Registo
-DESCRIPTION:Abertura do Recinto / Registo - Praia do Cabedelo, Viana do Castelo
+SUMMARY:Formula Kite 2026 - Arrival, venue opens
+DESCRIPTION:Chegada e abertura do recinto - Praia do Cabedelo, Viana do Castelo
 LOCATION:Praia do Cabedelo, Viana do Castelo, Portugal
 END:VEVENT
 BEGIN:VEVENT
 UID:event-1@formulakite2026.com
 DTSTAMP:20260313T093543Z
-DTSTART:20260509T090000Z
+DTSTART:20260509T150000Z
 DTEND:20260509T180000Z
-SUMMARY:Formula Kite 2026 - Inspeção de Equipamento
-DESCRIPTION:Inspeção de Equipamento - Praia do Cabedelo, Viana do Castelo
+SUMMARY:Formula Kite 2026 - On site registration & Photos
+DESCRIPTION:Registo no local e sessão fotográfica - Praia do Cabedelo, Viana do Castelo
 LOCATION:Praia do Cabedelo, Viana do Castelo, Portugal
 END:VEVENT
 BEGIN:VEVENT
 UID:event-2@formulakite2026.com
 DTSTAMP:20260313T093543Z
-DTSTART:20260510T180000Z
-DTEND:20260510T200000Z
-SUMMARY:Formula Kite 2026 - Cerimónia de Abertura
-DESCRIPTION:Cerimónia de Abertura - Praia do Cabedelo, Viana do Castelo
+DTSTART:20260510T090000Z
+DTEND:20260510T180000Z
+SUMMARY:Formula Kite 2026 - Equipment Inspection
+DESCRIPTION:Inspeção de Equipamento - Praia do Cabedelo, Viana do Castelo
 LOCATION:Praia do Cabedelo, Viana do Castelo, Portugal
 END:VEVENT
 BEGIN:VEVENT
 UID:event-3@formulakite2026.com
 DTSTAMP:20260313T093543Z
-DTSTART:20260511T110000Z
-DTEND:20260515T180000Z
-SUMMARY:Formula Kite 2026 - Opening Series (Qualificação)
-DESCRIPTION:Opening Series (Qualificação) - Praia do Cabedelo, Viana do Castelo
+DTSTART:20260510T180000Z
+DTEND:20260510T200000Z
+SUMMARY:Formula Kite 2026 - Opening Ceremony
+DESCRIPTION:Cerimónia de Abertura - Praia do Cabedelo, Viana do Castelo
 LOCATION:Praia do Cabedelo, Viana do Castelo, Portugal
 END:VEVENT
 BEGIN:VEVENT
 UID:event-4@formulakite2026.com
 DTSTAMP:20260313T093543Z
-DTSTART:20260516T121500Z
+DTSTART:20260511T110000Z
 DTEND:20260516T180000Z
-SUMMARY:Formula Kite 2026 - Medal Series & Entrega de Prémios
-DESCRIPTION:Medal Series & Entrega de Prémios - Praia do Cabedelo, Viana do Castelo
+SUMMARY:Formula Kite 2026 - Racing
+DESCRIPTION:Dias de Regatas - Praia do Cabedelo, Viana do Castelo
+LOCATION:Praia do Cabedelo, Viana do Castelo, Portugal
+END:VEVENT
+BEGIN:VEVENT
+UID:event-5@formulakite2026.com
+DTSTAMP:20260313T093543Z
+DTSTART:20260516T180000Z
+DTEND:20260516T200000Z
+SUMMARY:Formula Kite 2026 - Prize Giving / Closing Ceremony
+DESCRIPTION:Entrega de Prémios - Praia do Cabedelo, Viana do Castelo
+LOCATION:Praia do Cabedelo, Viana do Castelo, Portugal
+END:VEVENT
+BEGIN:VEVENT
+UID:event-6@formulakite2026.com
+DTSTAMP:20260313T093543Z
+DTSTART:20260517T090000Z
+DTEND:20260517T180000Z
+SUMMARY:Formula Kite 2026 - Departure / Venue Closes
+DESCRIPTION:Encerramento do Recinto - Praia do Cabedelo, Viana do Castelo
 LOCATION:Praia do Cabedelo, Viana do Castelo, Portugal
 END:VEVENT
 END:VCALENDAR`;
@@ -366,15 +383,15 @@ END:VCALENDAR`;
               document.body.removeChild(a);
           };
 
-          // 🏄 ATLETAS DATA
+          // 🏄 ATLETAS DATA (Atualizado com Info de Paris 2024 e LA 2028)
           const athleteProfiles = [
               { name: 'Axel Mazella', nat: 'FRA', flag: '🇫🇷', sail: '21', rank: 1, gear: 'Ozone / Levitaz', kites: '15m / 11m / 9m VMG', desc: lang === 'pt' ? 'Favorito com vento forte e águas mexidas.' : 'Favorite in strong winds and choppy waters.' },
               { name: 'Max Maeder', nat: 'SGP', flag: '🇸🇬', sail: '1', rank: 2, gear: 'Flysurfer', kites: '21m / 15m / 11m', desc: lang === 'pt' ? 'Campeão do mundo em título.' : 'Reigning world champion.' },
               { name: 'Riccardo Pianosi', nat: 'ITA', flag: '🇮🇹', sail: '10', rank: 4, gear: 'Ozone', kites: '15m / 11m / 9m', desc: lang === 'pt' ? 'Jovem promessa italiana super rápida.' : 'Young Italian promise, incredibly fast.' },
               { name: 'Connor Bainbridge', nat: 'GBR', flag: '🇬🇧', sail: '4', rank: 3, gear: 'Flysurfer', kites: '21m / 15m / 11m', desc: lang === 'pt' ? 'Especialista em condições de vento leve.' : 'Specialist in light wind conditions.' },
               { name: 'Daniela Moroz', nat: 'USA', flag: '🇺🇸', sail: '14', rank: 1, gear: 'Flysurfer', kites: '15m / 11m / 9m', desc: lang === 'pt' ? 'Líder incontestável da elite feminina.' : 'Undisputed leader of the female elite.' },
-              { name: 'Tomás Pires Lima', nat: 'POR', flag: '🇵🇹', sail: '7', rank: 18, gear: 'F-One', kites: '15m / 11m / 9m', desc: lang === 'pt' ? 'Nova geração, a competir em casa durante a qualificação Olímpica.' : 'New generation, competing at home during Olympic qualification.' },
-              { name: 'Mafalda Pires Lima', nat: 'POR', flag: '🇵🇹', sail: '12', rank: 12, gear: 'F-One', kites: '15m / 11m', desc: lang === 'pt' ? 'Experiência em qualificação Olímpica e atleta em progressão.' : 'Previous Olympic qualification experience and progressing.' },
+              { name: 'Tomás Pires de Lima', nat: 'POR', flag: '🇵🇹', sail: '7', rank: 18, gear: 'F-One / Viana', kites: '15m / 11m / 9m', desc: lang === 'pt' ? 'Integra o projeto Olímpico para Los Angeles 2028. A competir em casa.' : 'Part of the Olympic project for LA 2028. Competing at home.' },
+              { name: 'Mafalda Pires de Lima', nat: 'POR', flag: '🇵🇹', sail: '12', rank: 12, gear: 'F-One / Viana', kites: '15m / 11m', desc: lang === 'pt' ? '14º Lugar em Paris 2024. Integra o projeto Olímpico para LA 2028.' : '14th place in Paris 2024. Part of the Olympic project for LA 2028.' },
           ];
 
           // 🏆 RESULTADOS DATA
@@ -383,7 +400,7 @@ END:VCALENDAR`;
               { pos: 2, nat: 'GBR', flag: '🇬🇧', name: 'Connor Bainbridge', r1: 3, r2: 1, r3: '(4)', r4: 2, net: 6 },
               { pos: 3, nat: 'ITA', flag: '🇮🇹', name: 'Riccardo Pianosi', r1: 2, r2: '(6)', r3: 2, r4: 3, net: 7 },
               { pos: 4, nat: 'SGP', flag: '🇸🇬', name: 'Max Maeder', r1: '(7)', r2: 3, r3: 3, r4: 1, net: 7 },
-              { pos: 5, nat: 'POR', flag: '🇵🇹', name: 'Tomás Pires Lima', r1: 4, r2: 4, r3: 5, r4: '(10)', net: 13 },
+              { pos: 5, nat: 'POR', flag: '🇵🇹', name: 'Tomás Pires de Lima', r1: 4, r2: 4, r3: 5, r4: '(10)', net: 13 },
           ];
 
           const resultsMedal = [
@@ -391,7 +408,7 @@ END:VCALENDAR`;
               { pos: 2, nat: 'GBR', flag: '🇬🇧', name: 'Connor Bainbridge', status: 'FINALIST' },
               { pos: 3, nat: 'ITA', flag: '🇮🇹', name: 'Riccardo Pianosi', status: 'FINALIST' },
               { pos: 4, nat: 'SGP', flag: '🇸🇬', name: 'Max Maeder', status: 'FINALIST' },
-              { pos: 5, nat: 'POR', flag: '🇵🇹', name: 'Tomás Pires Lima', status: 'SEMI-FINAL' },
+              { pos: 5, nat: 'POR', flag: '🇵🇹', name: 'Tomás Pires de Lima', status: 'SEMI-FINAL' },
           ];
 
           // === DADOS KML OFICIAIS EXTRAÍDOS ===
@@ -433,7 +450,6 @@ END:VCALENDAR`;
               const mapContainer = document.getElementById(mapId);
               if (!mapContainer || !window.L) return;
 
-              // LIMPEZA PROFUNDA (Evitar erro "Map container is already initialized")
               if (mapRef.current) {
                   mapRef.current.off();
                   mapRef.current.remove();
@@ -512,7 +528,7 @@ END:VCALENDAR`;
               };
           }, [activeTab, showSplash, kmlLocations]);
 
-          // --- LEAFLET TRACKING EFFECT (NOVA ABA TRACKING) ---
+          // --- LEAFLET TRACKING EFFECT ---
           const trackingMapRef = useRef(null);
           const markersRef = useRef({});
 
@@ -524,7 +540,6 @@ END:VCALENDAR`;
                   const mapContainer = document.getElementById(mapId);
                   if (!mapContainer || !window.L) return;
 
-                  // LIMPEZA PROFUNDA (Evitar erro "Map container is already initialized")
                   if (trackingMapRef.current) {
                       trackingMapRef.current.off();
                       trackingMapRef.current.remove();
@@ -544,7 +559,6 @@ END:VCALENDAR`;
                       attribution: '© Google'
                   }).addTo(map);
 
-                  // APENAS AS ZONAS AMARELAS (Race Areas) E LINHAS
                   kmlLines.forEach(line => {
                       window.L.polyline(line.coords, { color: line.color, weight: 4, dashArray: '5, 5' }).addTo(map);
                   });
@@ -765,15 +779,12 @@ END:VCALENDAR`;
                 {/* === CONTEÚDO PRINCIPAL === */}
                 <div className={`flex-1 flex overflow-hidden ${activeTab === 'map' || activeTab === 'tracking' ? 'flex-col lg:flex-row' : 'flex-col'}`}>
                   
-                  {/* 1️⃣ MAPA GOOGLE EARTH (GERAL - LEAFLET + KML DATA COMPLETO) */}
+                  {/* 1️⃣ MAPA GOOGLE EARTH */}
                   {activeTab === 'map' ? (
                     <>
                       <main className="flex-none h-[50vh] lg:h-auto lg:flex-1 relative overflow-hidden bg-slate-900 transition-colors duration-300">
                         <div className={`absolute inset-0 z-10 ${isDarkMode ? 'brightness-75 saturate-150 contrast-125' : ''}`}>
-                          
-                          {/* LEAFLET MAP CONTAINER */}
                           <div id="real-map" className="w-full h-full absolute inset-0"></div>
-
                         </div>
                       </main>
 
@@ -859,15 +870,13 @@ END:VCALENDAR`;
                       </aside>
                     </>
                   ) : activeTab === 'tracking' ? (
-                      /* 2️⃣ LIVE TRACKING VIEW (Leaflet Apenas com as áreas de prova e atletas) */
+                      /* 2️⃣ LIVE TRACKING VIEW */
                       <>
                         <main className="flex-none h-[50vh] lg:h-auto lg:flex-1 relative overflow-hidden bg-slate-900 transition-colors duration-300">
                           <div className={`absolute inset-0 z-10 ${isDarkMode ? 'brightness-75 saturate-150 contrast-125' : ''}`}>
-                              {/* LEAFLET TRACKING CONTAINER */}
                               <div id="tracking-map" className="w-full h-full absolute inset-0"></div>
                           </div>
 
-                          {/* Map Control Tools (Zoom via Leaflet ref) */}
                           <div className="absolute top-6 left-6 z-30 flex flex-col gap-2">
                               <button onClick={() => trackingMapRef.current?.zoomIn()} className="bg-white/90 backdrop-blur dark:bg-slate-800/90 p-2.5 rounded-xl shadow-lg border border-white/20 text-slate-700 dark:text-slate-300 hover:text-emerald-500 hover:scale-105 transition-all"><MIcon name="zoom-in" size={20}/></button>
                               <button onClick={() => trackingMapRef.current?.zoomOut()} className="bg-white/90 backdrop-blur dark:bg-slate-800/90 p-2.5 rounded-xl shadow-lg border border-white/20 text-slate-700 dark:text-slate-300 hover:text-emerald-500 hover:scale-105 transition-all"><MIcon name="zoom-out" size={20}/></button>
@@ -913,7 +922,7 @@ END:VCALENDAR`;
                         </aside>
                       </>
                   ) : activeTab === 'results' ? (
-                      /* 🏆 SECÇÃO DE RESULTADOS PROFISSIONAIS */
+                      /* 🏆 SECÇÃO DE RESULTADOS */
                       <div className="flex-1 overflow-y-auto bg-slate-50 dark:bg-slate-950 p-4 lg:p-12 animate-in fade-in duration-500">
                           <div className="max-w-6xl mx-auto">
                               <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
@@ -1069,6 +1078,7 @@ END:VCALENDAR`;
                           </div>
                       </div>
                   ) : activeTab === 'schedule' ? (
+                    /* 📅 SECÇÃO CALENDÁRIO ATUALIZADA COM O HOSTING AGREEMENT */
                     <div className="flex-1 overflow-y-auto bg-slate-50 dark:bg-slate-950 p-4 lg:p-12 animate-in fade-in duration-500 transition-colors">
                       <div className="max-w-4xl mx-auto pb-8">
                         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 lg:gap-6 mb-6 lg:mb-12 bg-white dark:bg-slate-900 p-6 lg:p-8 rounded-2xl lg:rounded-[2.5rem] shadow-sm border border-slate-100 dark:border-slate-800 transition-colors">
@@ -1090,7 +1100,7 @@ END:VCALENDAR`;
                         <div className="space-y-3 lg:space-y-4">
                           {eventSchedule.map((item, idx) => (
                             <div key={idx} className="bg-white dark:bg-slate-900 p-5 lg:p-6 rounded-2xl lg:rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-md transition-shadow flex flex-col md:flex-row md:items-center gap-3 lg:gap-6 group">
-                              <div className="w-auto md:w-24 shrink-0 flex items-center justify-between md:block">
+                              <div className="w-auto md:w-32 shrink-0 flex items-center justify-between md:block">
                                 <span className="text-lg lg:text-2xl font-black text-slate-800 dark:text-slate-100 md:text-slate-300 dark:md:text-slate-700">{item.date}</span>
                                 <span className={`md:hidden inline-block px-3 py-1 rounded-md text-[9px] font-black uppercase tracking-widest ${
                                   item.status === 'race' ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300' :
@@ -1283,17 +1293,6 @@ END:VCALENDAR`;
                                               </div>
                                               <MIcon name="external-link" size={16} className="text-slate-300 dark:text-slate-600 group-hover:text-indigo-500" />
                                           </a>
-
-                                          <a href="https://modoexpertoschool.com/kitesurf/" target="_blank" rel="noopener noreferrer" className="flex items-center gap-4 p-3 rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group border border-transparent hover:border-slate-200 dark:hover:border-slate-700">
-                                              <div className="w-12 h-12 bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 rounded-xl flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                                                  <MIcon name="star" size={24} />
-                                              </div>
-                                              <div className="flex-1">
-                                                  <h4 className="font-bold text-sm text-slate-800 dark:text-white group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors">Modo Experto School</h4>
-                                                  <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-tight mt-0.5">{t.partnerModoDesc}</p>
-                                              </div>
-                                              <MIcon name="external-link" size={16} className="text-slate-300 dark:text-slate-600 group-hover:text-amber-500" />
-                                          </a>
                                           
                                           <a href="https://feelviana.com/" target="_blank" rel="noopener noreferrer" className="flex items-center gap-4 p-3 rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group border border-transparent hover:border-slate-200 dark:hover:border-slate-700">
                                               <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 rounded-xl flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
@@ -1304,6 +1303,17 @@ END:VCALENDAR`;
                                                   <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-tight mt-0.5">{t.partnerFeelVianaDesc}</p>
                                               </div>
                                               <MIcon name="external-link" size={16} className="text-slate-300 dark:text-slate-600 group-hover:text-purple-500" />
+                                          </a>
+
+                                          <a href="https://www.portoenorte.pt/" target="_blank" rel="noopener noreferrer" className="flex items-center gap-4 p-3 rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group border border-transparent hover:border-slate-200 dark:hover:border-slate-700">
+                                              <div className="w-12 h-12 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-xl flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                                                  <MIcon name="map" size={24} />
+                                              </div>
+                                              <div className="flex-1">
+                                                  <h4 className="font-bold text-sm text-slate-800 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">Turismo do Porto e Norte</h4>
+                                                  <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-tight mt-0.5">{t.partnerNorteDesc}</p>
+                                              </div>
+                                              <MIcon name="external-link" size={16} className="text-slate-300 dark:text-slate-600 group-hover:text-emerald-500" />
                                           </a>
                                       </div>
                                   </div>
