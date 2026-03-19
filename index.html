@@ -9,6 +9,24 @@
     <meta name="theme-color" content="#0f172a">
     <link rel="apple-touch-icon" href="icon.png">
     <title>2026 Formula Kite World Championships</title>
+
+    <!-- SISTEMA DE BLOQUEIO / ACESSO -->
+    <script>
+        // Verifica se o utilizador submeteu o formulário de acesso
+        // Se a chave 'acesso_permitido' não for 'sim', redireciona para a página de login
+        try {
+            if (localStorage.getItem('acesso_permitido') !== 'sim') {
+                // Previne o SyntaxError em ambientes de preview (blob:) onde URLs relativas falham
+                if (window.location.protocol !== 'blob:' && window.location.protocol !== 'data:') {
+                    window.location.href = 'acesso.html';
+                } else {
+                    console.warn("Ambiente de preview detetado. O redirecionamento para 'acesso.html' foi ignorado para permitir a visualização.");
+                }
+            }
+        } catch (error) {
+            console.error("Erro ao tentar redirecionar:", error);
+        }
+    </script>
     
     <!-- Leaflet CSS para Mapas Reais -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
