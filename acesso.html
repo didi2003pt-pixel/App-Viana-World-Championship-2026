@@ -4,16 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Acesso - 2026 Formula Kite</title>
-    
-    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    
-    <!-- Ícones -->
     <script src="https://unpkg.com/lucide@latest"></script>
 </head>
 <body class="bg-slate-950 min-h-screen flex items-center justify-center p-4 relative overflow-hidden">
     
-    <!-- Imagem de Fundo -->
     <div class="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1598555234907-74291880fb5c?q=80&w=2000&auto=format&fit=crop')] bg-cover bg-center opacity-20"></div>
     <div class="absolute inset-0 bg-gradient-to-t from-slate-950 to-transparent"></div>
 
@@ -27,31 +22,17 @@
             <p class="text-slate-400 text-sm">Registe-se para aceder ao Mundial de 2026</p>
         </div>
 
-        <!-- 
-          FORMULÁRIO MÁGICO
-          Muda o email no "action" para o teu email real.
-          Quando o utilizador submeter, os dados vão para o teu email e ele vai para o index.html
-        -->
         <form action="https://formsubmit.co/drprofissional016@gmail.com" method="POST" id="acessoForm" class="space-y-5">
-            
-            <!-- Redirecionamento após o formulário ser enviado -->
-            <input type="hidden" name="_next" value="https://o-teu-nome.github.io/o-teu-repo/index.html">
-            <!-- Desativar o Captcha chato -->
+            <!-- Redireciona para o index.html após o envio -->
+            <input type="hidden" name="_next" value="https://didi2003pt-pixel.github.io/mapa-kite-2026/index.html">
             <input type="hidden" name="_captcha" value="false">
-            <!-- Assunto do email que vais receber -->
             <input type="hidden" name="_subject" value="Novo Registo na App Formula Kite!">
 
             <div>
                 <label class="block text-sm font-medium text-slate-300 mb-2">Nome Completo</label>
                 <div class="relative">
                     <i data-lucide="user" class="absolute left-4 top-3.5 text-slate-500 w-5 h-5"></i>
-                    <input 
-                        type="text" 
-                        name="Nome"
-                        required
-                        class="w-full bg-slate-950 border border-slate-700 rounded-xl pl-12 pr-4 py-3 text-white placeholder-slate-600 focus:ring-2 focus:ring-blue-500 outline-none transition-all"
-                        placeholder="Ex: João Silva"
-                    >
+                    <input type="text" name="Nome" required class="w-full bg-slate-950 border border-slate-700 rounded-xl pl-12 pr-4 py-3 text-white placeholder-slate-600 focus:ring-2 focus:ring-blue-500 outline-none transition-all" placeholder="Ex: João Silva">
                 </div>
             </div>
             
@@ -59,13 +40,7 @@
                 <label class="block text-sm font-medium text-slate-300 mb-2">E-mail</label>
                 <div class="relative">
                     <i data-lucide="mail" class="absolute left-4 top-3.5 text-slate-500 w-5 h-5"></i>
-                    <input 
-                        type="email" 
-                        name="Email"
-                        required
-                        class="w-full bg-slate-950 border border-slate-700 rounded-xl pl-12 pr-4 py-3 text-white placeholder-slate-600 focus:ring-2 focus:ring-blue-500 outline-none transition-all"
-                        placeholder="drprofissional016@gmail.com"
-                    >
+                    <input type="email" name="Email" required class="w-full bg-slate-950 border border-slate-700 rounded-xl pl-12 pr-4 py-3 text-white placeholder-slate-600 focus:ring-2 focus:ring-blue-500 outline-none transition-all" placeholder="teu@email.com">
                 </div>
             </div>
 
@@ -77,13 +52,9 @@
     </div>
 
     <script>
-        // Inicializar ícones
         lucide.createIcons();
-
-        // Guardar no browser que o utilizador já passou por aqui, para poderes bloquear o index.html
         document.getElementById('acessoForm').addEventListener('submit', function() {
             localStorage.setItem('acesso_permitido', 'sim');
-            // O formsubmit.co trata do envio do email e redireciona automaticamente devido ao campo _next
         });
     </script>
 </body>
