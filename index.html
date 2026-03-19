@@ -138,7 +138,10 @@
                 partnerWSDesc: "Federação internacional de vela.",
                 partnerModoDesc: "Escola oficial parceira do evento.",
                 partnerFeelVianaDesc: "Alojamento oficial e parceiro logístico.",
-                qualifiersLabel: "QUALIFICAÇÕES", finalsLabel: "FINAIS"
+                qualifiersLabel: "QUALIFICAÇÕES", finalsLabel: "FINAIS",
+                // Login Strings
+                loginTitle: "Bem-vindo", loginSub: "Insira os seus dados para aceder à App Oficial.",
+                nameLabel: "Nome Completo", emailLabel: "Email", enterBtn: "Aceder à App", entering: "A entrar..."
             },
             en: {
                 officialApp: "Official App", partners: "Official Partners:",
@@ -173,7 +176,10 @@
                 partnerWSDesc: "International sailing federation.",
                 partnerModoDesc: "Official partner kite school.",
                 partnerFeelVianaDesc: "Official accommodation and logistics.",
-                qualifiersLabel: "QUALIFIERS", finalsLabel: "FINAIS"
+                qualifiersLabel: "QUALIFIERS", finalsLabel: "FINAIS",
+                // Login Strings
+                loginTitle: "Welcome", loginSub: "Enter your details to access the Official App.",
+                nameLabel: "Full Name", emailLabel: "Email", enterBtn: "Access App", entering: "Entering..."
             }
         };
 
@@ -183,15 +189,67 @@
         }
 
         const App = () => {
-          // --- SPLASH SCREEN STATE ---
+          // --- ESTADOS DE ACESSO E SPLASH SCREEN ---
           const [showSplash, setShowSplash] = useState(true);
           const [splashFadeOut, setSplashFadeOut] = useState(false);
+          const [hasAccess, setHasAccess] = useState(false);
+          const [formData, setFormData] = useState({ name: '', email: '' });
+          const [isSubmitting, setIsSubmitting] = useState(false);
 
+          // Verificar se já tem acesso guardado (localStorage)
           useEffect(() => {
+              const savedAccess = localStorage.getItem('vianaKiteAppAccess');
+              if (savedAccess === 'true') {
+                  setHasAccess(true);
+              }
+              
+              // Gerir o tempo do Splash Screen
               const fadeTimer = setTimeout(() => { setSplashFadeOut(true); }, 1500);
               const removeTimer = setTimeout(() => { setShowSplash(false); }, 2000);
               return () => { clearTimeout(fadeTimer); clearTimeout(removeTimer); };
           }, []);
+
+          // --- SUBMISSÃO DO FORMULÁRIO PARA GOOGLE SHEETS ---
+          const handleLogin = async (e) => {
+              e.preventDefault();
+              if (!formData.name || !formData.email) return;
+
+              setIsSubmitting(true);
+
+              // 🔴 ATENÇÃO: Cole aqui o link gerado no Apps Script (começa por https://script.google.com/...)
+              // Não cole o link direto da folha (docs.google.com), pois o Google bloqueia o envio direto.
+              const scriptURL = 'COLE_AQUI_O_SEU_LINK_DO_GOOGLE_APPS_SCRIPT';
+
+              try {
+                  const formBody = new FormData();
+                  formBody.append('name', formData.name);
+                  formBody.append('email', formData.email);
+
+                  // Fazemos o fetch com 'no-cors' para evitar erros de CORS (Cross-Origin)
+                  // Não conseguimos ler a resposta se foi sucesso ou não, mas os dados chegam ao Google Sheets.
+                  if(scriptURL !== 'COLE_AQUI_O_SEU_LINK_DO_GOOGLE_APPS_SCRIPT') {
+                      await fetch(scriptURL, {
+                          method: 'POST',
+                          mode: 'no-cors',
+                          body: formBody
+                      });
+                  } else {
+                      // Simulação de tempo de espera caso o link não esteja configurado
+                      await new Promise(resolve => setTimeout(resolve, 800));
+                  }
+
+                  // Dá acesso e guarda no localStorage
+                  localStorage.setItem('vianaKiteAppAccess', 'true');
+                  setHasAccess(true);
+              } catch (error) {
+                  console.error('Erro ao enviar dados para o Google Sheets:', error);
+                  // Em caso de erro, permitimos o acesso na mesma para não bloquear o utilizador
+                  localStorage.setItem('vianaKiteAppAccess', 'true');
+                  setHasAccess(true);
+              } finally {
+                  setIsSubmitting(false);
+              }
+          };
 
           const [activeTab, setActiveTab] = useState('tracking'); 
           const [activeFilters, setActiveFilters] = useState(['all']);
@@ -262,7 +320,7 @@
           ]);
 
           useEffect(() => {
-              if (activeTab !== 'tracking' || showSplash) return;
+              if (activeTab !== 'tracking' || showSplash || !hasAccess) return;
               const interval = setInterval(() => {
                   setLiveAthletes(prev => prev.map(a => ({
                       ...a,
@@ -272,7 +330,7 @@
                   })));
               }, 1500);
               return () => clearInterval(interval);
-          }, [activeTab, showSplash]);
+          }, [activeTab, showSplash, hasAccess]);
 
           const exportCSV = () => {
               const csv = `${t.trackPos},${t.trackName},${t.trackNat},${t.trackSpeed}\n` + 
@@ -284,7 +342,6 @@
           };
 
           // --- FUNÇÕES DE CALENDÁRIO ---
-          // Esta é a função para exportar o ficheiro .ics completo gerado pelo utilizador
           const exportCalendar = () => {
               const icsContent = `BEGIN:VCALENDAR
 VERSION:2.0
@@ -409,13 +466,12 @@ END:VCALENDAR`;
           const mapRef = useRef(null);
 
           useEffect(() => {
-              if (activeTab !== 'map' || showSplash) return;
+              if (activeTab !== 'map' || showSplash || !hasAccess) return;
               
               const mapId = 'real-map';
               const mapContainer = document.getElementById(mapId);
               if (!mapContainer || !window.L) return;
 
-              // LIMPEZA PROFUNDA (Evitar erro "Map container is already initialized")
               if (mapRef.current) {
                   mapRef.current.off();
                   mapRef.current.remove();
@@ -492,21 +548,20 @@ END:VCALENDAR`;
                       domC.innerHTML = '';
                   }
               };
-          }, [activeTab, showSplash, kmlLocations]);
+          }, [activeTab, showSplash, hasAccess, kmlLocations]);
 
           // --- LEAFLET TRACKING EFFECT (NOVA ABA TRACKING) ---
           const trackingMapRef = useRef(null);
           const markersRef = useRef({});
 
           useEffect(() => {
-              if (activeTab !== 'tracking' || showSplash) return;
+              if (activeTab !== 'tracking' || showSplash || !hasAccess) return;
               
               let timeoutId = setTimeout(() => {
                   const mapId = 'tracking-map';
                   const mapContainer = document.getElementById(mapId);
                   if (!mapContainer || !window.L) return;
 
-                  // LIMPEZA PROFUNDA (Evitar erro "Map container is already initialized")
                   if (trackingMapRef.current) {
                       trackingMapRef.current.off();
                       trackingMapRef.current.remove();
@@ -526,7 +581,6 @@ END:VCALENDAR`;
                       attribution: '© Google'
                   }).addTo(map);
 
-                  // APENAS AS ZONAS AMARELAS (Race Areas) E LINHAS
                   kmlLines.forEach(line => {
                       window.L.polyline(line.coords, { color: line.color, weight: 4, dashArray: '5, 5' }).addTo(map);
                   });
@@ -561,11 +615,10 @@ END:VCALENDAR`;
                       domC.innerHTML = '';
                   }
               };
-          }, [activeTab, showSplash, kmlLocations]);
+          }, [activeTab, showSplash, hasAccess, kmlLocations]);
 
-          // ATUALIZAÇÃO DOS PINOS EM TEMPO REAL
           useEffect(() => {
-              if (activeTab === 'tracking' && trackingMapRef.current && window.L) {
+              if (activeTab === 'tracking' && trackingMapRef.current && window.L && hasAccess) {
                   const map = trackingMapRef.current;
                   
                   liveAthletes.forEach(a => {
@@ -591,7 +644,7 @@ END:VCALENDAR`;
                       }
                   });
               }
-          }, [liveAthletes, activeTab]);
+          }, [liveAthletes, activeTab, hasAccess]);
 
           useEffect(() => {
               window.selectLocGlobal = (id) => {
@@ -635,6 +688,80 @@ END:VCALENDAR`;
                   </div>
               )}
 
+              {/* === ECRÃ DE LOGIN / ACESSO === */}
+              {!showSplash && !hasAccess && (
+                  <div className="absolute inset-0 z-[90] bg-slate-900 flex flex-col items-center justify-center p-4">
+                      <div className="absolute inset-0 overflow-hidden pointer-events-none opacity-20">
+                          <div className="absolute -top-[20%] -right-[10%] w-[70%] h-[70%] bg-emerald-500 rounded-full blur-[120px]"></div>
+                          <div className="absolute -bottom-[20%] -left-[10%] w-[60%] h-[60%] bg-blue-500 rounded-full blur-[120px]"></div>
+                      </div>
+
+                      <div className="bg-white/10 backdrop-blur-xl border border-white/20 p-8 md:p-10 rounded-3xl shadow-2xl w-full max-w-md relative z-10 animate-in fade-in slide-in-from-bottom-8 duration-700">
+                          <div className="flex flex-col items-center mb-8 text-center">
+                              <img src="image_11335c.png" alt="Logo" className="h-16 mb-4 object-contain drop-shadow-md" />
+                              <h2 className="text-2xl font-black text-white tracking-tight">{t.loginTitle}</h2>
+                              <p className="text-slate-300 text-sm mt-2">{t.loginSub}</p>
+                          </div>
+
+                          <form onSubmit={handleLogin} className="space-y-5">
+                              <div>
+                                  <label className="block text-[10px] font-bold text-emerald-400 uppercase tracking-widest mb-1.5">{t.nameLabel}</label>
+                                  <div className="relative">
+                                      <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                                          <MIcon name="user" size={18} />
+                                      </div>
+                                      <input 
+                                          type="text" 
+                                          required
+                                          value={formData.name}
+                                          onChange={(e) => setFormData({...formData, name: e.target.value})}
+                                          className="w-full bg-slate-900/50 border border-slate-700 text-white rounded-xl py-3 pl-11 pr-4 focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all"
+                                          placeholder="Ex: João Silva"
+                                      />
+                                  </div>
+                              </div>
+                              
+                              <div>
+                                  <label className="block text-[10px] font-bold text-emerald-400 uppercase tracking-widest mb-1.5">{t.emailLabel}</label>
+                                  <div className="relative">
+                                      <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                                          <MIcon name="mail" size={18} />
+                                      </div>
+                                      <input 
+                                          type="email" 
+                                          required
+                                          value={formData.email}
+                                          onChange={(e) => setFormData({...formData, email: e.target.value})}
+                                          className="w-full bg-slate-900/50 border border-slate-700 text-white rounded-xl py-3 pl-11 pr-4 focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all"
+                                          placeholder="joao@email.com"
+                                      />
+                                  </div>
+                              </div>
+
+                              <button 
+                                  type="submit" 
+                                  disabled={isSubmitting}
+                                  className="w-full bg-emerald-500 hover:bg-emerald-400 text-white font-bold py-3.5 rounded-xl shadow-[0_0_20px_rgba(16,185,129,0.3)] transition-all flex justify-center items-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed mt-4"
+                              >
+                                  {isSubmitting ? (
+                                      <><MIcon name="loader-2" size={18} className="animate-spin" /> {t.entering}</>
+                                  ) : (
+                                      <><MIcon name="log-in" size={18} /> {t.enterBtn}</>
+                                  )}
+                              </button>
+                          </form>
+                      </div>
+
+                      <div className="absolute bottom-6 flex gap-4 text-slate-500 z-10 text-xs font-medium">
+                          <button onClick={() => setLang('pt')} className={lang === 'pt' ? 'text-white' : ''}>PT</button>
+                          <span>|</span>
+                          <button onClick={() => setLang('en')} className={lang === 'en' ? 'text-white' : ''}>EN</button>
+                      </div>
+                  </div>
+              )}
+
+              {/* === CONTEÚDO PRINCIPAL (Só mostra se tiver acesso) === */}
+              {hasAccess && (
               <div className="flex flex-col h-[100dvh] bg-slate-50 dark:bg-slate-950 font-sans text-slate-900 dark:text-slate-100 overflow-hidden transition-colors duration-300 relative">
                 
                 {/* === MODAL DE REALIDADE AUMENTADA (AR SIMULATOR) === */}
@@ -752,10 +879,7 @@ END:VCALENDAR`;
                     <>
                       <main className="flex-none h-[50vh] lg:h-auto lg:flex-1 relative overflow-hidden bg-slate-900 transition-colors duration-300">
                         <div className={`absolute inset-0 z-10 ${isDarkMode ? 'brightness-75 saturate-150 contrast-125' : ''}`}>
-                          
-                          {/* LEAFLET MAP CONTAINER */}
                           <div id="real-map" className="w-full h-full absolute inset-0"></div>
-
                         </div>
                       </main>
 
@@ -841,15 +965,13 @@ END:VCALENDAR`;
                       </aside>
                     </>
                   ) : activeTab === 'tracking' ? (
-                      /* 2️⃣ LIVE TRACKING VIEW (Leaflet Apenas com as áreas de prova e atletas) */
+                      /* 2️⃣ LIVE TRACKING VIEW */
                       <>
                         <main className="flex-none h-[50vh] lg:h-auto lg:flex-1 relative overflow-hidden bg-slate-900 transition-colors duration-300">
                           <div className={`absolute inset-0 z-10 ${isDarkMode ? 'brightness-75 saturate-150 contrast-125' : ''}`}>
-                              {/* LEAFLET TRACKING CONTAINER */}
                               <div id="tracking-map" className="w-full h-full absolute inset-0"></div>
                           </div>
 
-                          {/* Map Control Tools (Zoom via Leaflet ref) */}
                           <div className="absolute top-6 left-6 z-30 flex flex-col gap-2">
                               <button onClick={() => trackingMapRef.current?.zoomIn()} className="bg-white/90 backdrop-blur dark:bg-slate-800/90 p-2.5 rounded-xl shadow-lg border border-white/20 text-slate-700 dark:text-slate-300 hover:text-emerald-500 hover:scale-105 transition-all"><MIcon name="zoom-in" size={20}/></button>
                               <button onClick={() => trackingMapRef.current?.zoomOut()} className="bg-white/90 backdrop-blur dark:bg-slate-800/90 p-2.5 rounded-xl shadow-lg border border-white/20 text-slate-700 dark:text-slate-300 hover:text-emerald-500 hover:scale-105 transition-all"><MIcon name="zoom-out" size={20}/></button>
@@ -1217,10 +1339,10 @@ END:VCALENDAR`;
                                           </h3>
                                           <div className="grid grid-cols-2 gap-3">
                                               <button onClick={() => setIsDarkMode(false)} className={`py-3 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 border-2 ${!isDarkMode ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 shadow-sm' : 'border-transparent bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'}`}>
-                                                  <MIcon name="sun" size={16} /> {t.themeLight}
+                                                  <MIcon name="sun" size={16} /> {t.themeLight || 'Claro'}
                                               </button>
                                               <button onClick={() => setIsDarkMode(true)} className={`py-3 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 border-2 ${isDarkMode ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 shadow-sm' : 'border-transparent bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'}`}>
-                                                  <MIcon name="moon" size={16} /> {t.themeDark}
+                                                  <MIcon name="moon" size={16} /> {t.themeDark || 'Escuro'}
                                               </button>
                                           </div>
                                       </div>
@@ -1296,6 +1418,7 @@ END:VCALENDAR`;
 
                 </div>
               </div>
+              )}
             </div>
           );
         };
