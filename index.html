@@ -218,16 +218,26 @@
 
               // 🔴 ATENÇÃO: Cole aqui o link gerado no Apps Script (começa por https://script.google.com/...)
               // Não cole o link direto da folha (docs.google.com), pois o Google bloqueia o envio direto.
-              const scriptURL = 'COLE_AQUI_O_SEU_LINK_DO_GOOGLE_APPS_SCRIPT';
+              const scriptURL = 'https://script.google.com/macros/s/AKfycbwZngiDcC1a32pQsCLR1_e-Dy0pHuMrevkw8kzAPQmOkm1E8QzG9yV9qX66JVXQ3i7q/exec';
 
-              try {
-                  const formBody = new FormData();
-                  formBody.append('name', formData.name);
-                  formBody.append('email', formData.email);
+try {
+    const formBody = new FormData();
+    formBody.append('name', formData.name);
+    formBody.append('email', formData.email);
 
-                  // Fazemos o fetch com 'no-cors' para evitar erros de CORS (Cross-Origin)
-                  // Não conseguimos ler a resposta se foi sucesso ou não, mas os dados chegam ao Google Sheets.
-                  if(scriptURL !== 'COLE_AQUI_O_SEU_LINK_DO_GOOGLE_APPS_SCRIPT') {
+    // Fazemos o fetch com 'no-cors' para evitar erros de CORS (Cross-Origin)
+    // Não conseguimos ler a resposta se foi sucesso ou não, mas os dados chegam ao Google Sheets.
+    if(scriptURL !== 'COLE_AQUI_O_SEU_LINK_DO_GOOGLE_APPS_SCRIPT') {
+        await fetch(scriptURL, {
+            method: 'POST',
+            mode: 'no-cors',
+            body: formBody
+        });
+    } else {
+        // Simulação de tempo de espera caso o link não esteja configurado
+        await new Promise(resolve => setTimeout(resolve, 800));
+    }
+                  if(scriptURL !== https://script.google.com/macros/s/AKfycbwZngiDcCla32pQsCLRl_e-Dy0pHuMrevkw8kzAPQmOkm1E8QzG9yV9qX66JVXQ3i7q/exec) {
                       await fetch(scriptURL, {
                           method: 'POST',
                           mode: 'no-cors',
