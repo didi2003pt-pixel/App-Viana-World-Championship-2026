@@ -514,13 +514,57 @@
           }, [selectedPoint]);
 
           const handleSendChat = async () => { 
-             if(!chatInput) return;
-             setChatHistory(prev => [...prev, { role: 'user', text: chatInput }]);
-             setChatInput(''); setIsTyping(true);
-             setTimeout(() => {
-                 setChatHistory(prev => [...prev, { role: 'model', text: lang === 'pt' ? 'A Formula Kite é uma classe olímpica de extrema velocidade e tática! A nortada em Viana é ideal para estas pranchas hydrofoil.' : 'Formula Kite is an extremely fast and tactical Olympic class! The Nortada wind in Viana is ideal for these hydrofoils.' }]);
+             if(!chatInput.trim()) return;
+             const userQuery = chatInput;
+             setChatHistory(prev => [...prev, { role: 'user', text: userQuery }]);
+             setChatInput(''); 
+             setIsTyping(true);
+
+             try {
+                 // A key é injetada nativamente pelo ambiente em tempo de execução
+                 const apiKey = "";
+                 const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+                 
+                 // System Prompt: Dá personalidade e contexto à IA
+                 const systemPrompt = lang === 'pt' 
+                    ? "És o assistente oficial do Campeonato do Mundo de Formula Kite 2026 em Viana do Castelo. Responde de forma muito curta, amigável e direta. Foca-te em vela, kite, vento e regras. O limite de tempo da regata é 24m (qualificação) e 14m (finais). O hotel oficial é o FeelViana."
+                    : "You are the official assistant for the 2026 Formula Kite World Championships in Viana do Castelo. Answer very briefly, friendly, and directly. Focus on sailing, kite, wind, and rules. Race time limit is 24m qualifying, 14m finals. Official hotel is FeelViana.";
+
+                 const payload = {
+                     contents: [{ parts: [{ text: userQuery }] }],
+                     systemInstruction: { parts: [{ text: systemPrompt }] }
+                 };
+
+                 // Lógica de retentativa em caso de falha na rede
+                 const fetchWithRetry = async (url, options, retries = 5) => {
+                     const delays = [1000, 2000, 4000, 8000, 16000];
+                     for (let i = 0; i < retries; i++) {
+                         try {
+                             const response = await fetch(url, options);
+                             if (!response.ok) throw new Error(`HTTP erro ${response.status}`);
+                             return await response.json();
+                         } catch (e) {
+                             if (i === retries - 1) throw e;
+                             await new Promise(res => setTimeout(res, delays[i]));
+                         }
+                     }
+                 };
+
+                 const result = await fetchWithRetry(url, {
+                     method: 'POST',
+                     headers: { 'Content-Type': 'application/json' },
+                     body: JSON.stringify(payload)
+                 });
+
+                 // Extração da resposta e atualização do chat
+                 const replyText = result.candidates?.[0]?.content?.parts?.[0]?.text || (lang === 'pt' ? "Desculpa, falha na comunicação." : "Sorry, communication failed.");
+                 setChatHistory(prev => [...prev, { role: 'model', text: replyText }]);
+
+             } catch (error) {
+                 setChatHistory(prev => [...prev, { role: 'model', text: lang === 'pt' ? "Erro de ligação à API. Verifica a tua internet e tenta mais tarde." : "API connection error. Check your internet and try again later." }]);
+             } finally {
                  setIsTyping(false);
-             }, 1500);
+             }
           };
 
           return (
