@@ -8,14 +8,12 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#0f172a">
     <link rel="apple-touch-icon" href="icon.png">
-    
-    <!-- Link para o novo Manifest físico -->
-    <link rel="manifest" href="manifest.json">
-    
     <title>2026 Formula Kite World Championships</title>
 
     <!-- SISTEMA DE BLOQUEIO / ACESSO -->
     <script>
+        // Verifica se o utilizador submeteu o formulário de acesso
+        // Se a chave 'acesso_permitido' não for 'sim', redireciona para a página de login
         try {
             if (localStorage.getItem('acesso_permitido') !== 'sim') {
                 if (window.location.protocol !== 'blob:' && window.location.protocol !== 'data:') {
@@ -158,11 +156,7 @@
                 partnerModoDesc: "Escola oficial parceira do evento.",
                 partnerFeelVianaDesc: "Alojamento oficial e parceiro logístico.",
                 partnerNorteDesc: "Turismo do Porto e Norte - Promoção da região.",
-                qualifiersLabel: "QUALIFICAÇÕES", finalsLabel: "FINAIS",
-                settingsPwa: "Notificações & PWA", pwaEnable: "Ativar Notificações", pwaActive: "Notificações Ativas",
-                pwaTest1: "Testar: Regata", pwaTest2: "Testar: Vento",
-                pushRaceTitle: "Viana 2026 🏁", pushRaceBody: "A Regata da Medal Series vai começar em 10 minutos!",
-                pushWindTitle: "Condições 🌬️", pushWindBody: "O vento atingiu os 18 nós, bandeira verde!"
+                qualifiersLabel: "QUALIFICAÇÕES", finalsLabel: "FINAIS"
             },
             en: {
                 officialApp: "Official App", partners: "Official Partners:",
@@ -198,13 +192,13 @@
                 partnerModoDesc: "Official partner kite school.",
                 partnerFeelVianaDesc: "Official accommodation and logistics.",
                 partnerNorteDesc: "Porto and North Tourism Board - Regional promotion.",
-                qualifiersLabel: "QUALIFIERS", finalsLabel: "FINALS",
-                settingsPwa: "Push Notifications", pwaEnable: "Enable Notifications", pwaActive: "Notifications Active",
-                pwaTest1: "Test: Race", pwaTest2: "Test: Wind",
-                pushRaceTitle: "Viana 2026 🏁", pushRaceBody: "The Medal Series Race will start in 10 minutes!",
-                pushWindTitle: "Conditions 🌬️", pushWindBody: "Wind reached 18 knots, green flag!"
+                qualifiersLabel: "QUALIFIERS", finalsLabel: "FINALS"
             }
         };
+
+        if ('serviceWorker' in navigator) {
+            console.log("PWA Offline mode ready.");
+        }
 
         const App = () => {
           const [showSplash, setShowSplash] = useState(true);
@@ -215,85 +209,6 @@
               const removeTimer = setTimeout(() => { setShowSplash(false); }, 2000);
               return () => { clearTimeout(fadeTimer); clearTimeout(removeTimer); };
           }, []);
-
-          // --- PWA & PUSH NOTIFICATIONS REAIS ---
-          const [isPushEnabled, setIsPushEnabled] = useState(false);
-          const [isSubscribing, setIsSubscribing] = useState(false);
-
-          // Função auxiliar para converter a Chave VAPID
-          const urlB64ToUint8Array = (base64String) => {
-              const padding = '='.repeat((4 - base64String.length % 4) % 4);
-              const base64 = (base64String + padding).replace(/\-/g, '+').replace(/_/g, '/');
-              const rawData = window.atob(base64);
-              const outputArray = new Uint8Array(rawData.length);
-              for (let i = 0; i < rawData.length; ++i) outputArray[i] = rawData.charCodeAt(i);
-              return outputArray;
-          };
-
-          useEffect(() => {
-              // 1. Registar Service Worker
-              if ('serviceWorker' in navigator) {
-                  navigator.serviceWorker.register('/service-worker.js')
-                      .then(reg => {
-                          console.log('SW Registado!');
-                          // 2. Verificar se o utilizador já tem as notificações ligadas
-                          if ('PushManager' in window) {
-                              reg.pushManager.getSubscription().then(sub => {
-                                  setIsPushEnabled(sub !== null);
-                              });
-                          }
-                      })
-                      .catch(err => console.log('Erro no SW:', err));
-              }
-          }, []);
-
-          // Botão Ativar / Desativar Notificações Reais
-          const toggleRealPush = async () => {
-              if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-                  alert(lang === 'pt' ? 'O teu browser não suporta Notificações Push.' : 'Browser does not support Push.');
-                  return;
-              }
-
-              setIsSubscribing(true);
-              try {
-                  const reg = await navigator.serviceWorker.ready;
-                  
-                  if (isPushEnabled) {
-                      // DESATIVAR: Remover subscrição
-                      const sub = await reg.pushManager.getSubscription();
-                      if (sub) {
-                          await sub.unsubscribe();
-                          console.log('Notificações Desativadas.');
-                          // Idealmente, aqui fazias um fetch() para o teu backend remover este token
-                      }
-                      setIsPushEnabled(false);
-                  } else {
-                      // ATIVAR: Pedir permissão e Subescrever
-                      const permission = await Notification.requestPermission();
-                      if (permission !== 'granted') throw new Error('Permissão negada.');
-
-                      // CHAVE VAPID PÚBLICA MOCK (Aviso: Em produção, tens de gerar uma tua e ter um servidor)
-                      // Esta chave serve apenas para a API do Browser deixar gerar o Token
-                      const publicVapidKey = 'BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjBJuBkr3qBUYIHBQFLXYp5Nksh8U';
-                      const applicationServerKey = urlB64ToUint8Array(publicVapidKey);
-                      
-                      const subscription = await reg.pushManager.subscribe({
-                          userVisibleOnly: true,
-                          applicationServerKey: applicationServerKey
-                      });
-                      
-                      console.log('A TUA SUBSCRIÇÃO (Envia isto para o teu servidor backend):', JSON.stringify(subscription));
-                      // Aqui em produção farias algo como:
-                      // fetch('https://teu-servidor.com/api/guardar-subscricao', { method: 'POST', body: JSON.stringify(subscription) });
-
-                      setIsPushEnabled(true);
-                  }
-              } catch (error) {
-                  console.error('Erro no Toggle Push:', error);
-              } finally {
-                  setIsSubscribing(false);
-              }
-          };
 
           const [activeTab, setActiveTab] = useState('tracking'); 
           const [activeFilters, setActiveFilters] = useState(['all']);
@@ -345,6 +260,7 @@
               }
           };
 
+          // --- DADOS DO EVENTO & SCHEDULE (ATUALIZADO COM O HOSTING AGREEMENT) ---
           const eventSchedule = useMemo(() => [
               { date: '8 Mai', activity: lang === 'pt' ? 'Chegada, Abertura do Recinto' : 'Arrival, venue opens', time: 'Todo o dia', status: 'setup' },
               { date: '9 Mai', activity: lang === 'pt' ? 'Registo no local & Sessão Fotográfica' : 'On site registration & Profile Picture Photo Shoot', time: '15:00 - 18:00', status: 'setup' },
@@ -355,6 +271,7 @@
               { date: '17 Mai', activity: lang === 'pt' ? 'Partida / Encerramento do Recinto' : 'Departure / Venue Closes', time: 'Todo o dia', status: 'setup' },
           ], [lang]);
 
+          // --- TRACKING STATE ---
           const [liveAthletes, setLiveAthletes] = useState([
               { id: 1, pos: 1, name: 'A. Mazella', country: 'FRA', flag: '🇫🇷', sail: '21', speed: 28, lat: 41.6780, lng: -8.8550 },
               { id: 2, pos: 2, name: 'M. Maeder', country: 'SGP', flag: '🇸🇬', sail: '1', speed: 27, lat: 41.6750, lng: -8.8580 },
@@ -384,14 +301,89 @@
               a.href = url; a.download = 'viana2026_live_ranking.csv'; a.click();
           };
 
+          // --- FUNÇÕES DE CALENDÁRIO (Atualizado com o novo schedule) ---
           const exportCalendar = () => {
-              const icsContent = `BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//Formula Kite World Championships 2026//PT\nCALSCALE:GREGORIAN\nMETHOD:PUBLISH\nBEGIN:VEVENT\nUID:event-0@formulakite2026.com\nDTSTAMP:20260313T093543Z\nDTSTART:20260508T090000Z\nDTEND:20260508T180000Z\nSUMMARY:Formula Kite 2026 - Arrival, venue opens\nLOCATION:Praia do Cabedelo, Viana do Castelo, Portugal\nEND:VEVENT\nEND:VCALENDAR`;
+              const icsContent = `BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Formula Kite World Championships 2026//PT
+CALSCALE:GREGORIAN
+METHOD:PUBLISH
+BEGIN:VEVENT
+UID:event-0@formulakite2026.com
+DTSTAMP:20260313T093543Z
+DTSTART:20260508T090000Z
+DTEND:20260508T180000Z
+SUMMARY:Formula Kite 2026 - Arrival, venue opens
+DESCRIPTION:Chegada e abertura do recinto - Praia do Cabedelo, Viana do Castelo
+LOCATION:Praia do Cabedelo, Viana do Castelo, Portugal
+END:VEVENT
+BEGIN:VEVENT
+UID:event-1@formulakite2026.com
+DTSTAMP:20260313T093543Z
+DTSTART:20260509T150000Z
+DTEND:20260509T180000Z
+SUMMARY:Formula Kite 2026 - On site registration & Photos
+DESCRIPTION:Registo no local e sessão fotográfica - Praia do Cabedelo, Viana do Castelo
+LOCATION:Praia do Cabedelo, Viana do Castelo, Portugal
+END:VEVENT
+BEGIN:VEVENT
+UID:event-2@formulakite2026.com
+DTSTAMP:20260313T093543Z
+DTSTART:20260510T090000Z
+DTEND:20260510T180000Z
+SUMMARY:Formula Kite 2026 - Equipment Inspection
+DESCRIPTION:Inspeção de Equipamento - Praia do Cabedelo, Viana do Castelo
+LOCATION:Praia do Cabedelo, Viana do Castelo, Portugal
+END:VEVENT
+BEGIN:VEVENT
+UID:event-3@formulakite2026.com
+DTSTAMP:20260313T093543Z
+DTSTART:20260510T180000Z
+DTEND:20260510T200000Z
+SUMMARY:Formula Kite 2026 - Opening Ceremony
+DESCRIPTION:Cerimónia de Abertura - Praia do Cabedelo, Viana do Castelo
+LOCATION:Praia do Cabedelo, Viana do Castelo, Portugal
+END:VEVENT
+BEGIN:VEVENT
+UID:event-4@formulakite2026.com
+DTSTAMP:20260313T093543Z
+DTSTART:20260511T110000Z
+DTEND:20260516T180000Z
+SUMMARY:Formula Kite 2026 - Racing
+DESCRIPTION:Dias de Regatas - Praia do Cabedelo, Viana do Castelo
+LOCATION:Praia do Cabedelo, Viana do Castelo, Portugal
+END:VEVENT
+BEGIN:VEVENT
+UID:event-5@formulakite2026.com
+DTSTAMP:20260313T093543Z
+DTSTART:20260516T180000Z
+DTEND:20260516T200000Z
+SUMMARY:Formula Kite 2026 - Prize Giving / Closing Ceremony
+DESCRIPTION:Entrega de Prémios - Praia do Cabedelo, Viana do Castelo
+LOCATION:Praia do Cabedelo, Viana do Castelo, Portugal
+END:VEVENT
+BEGIN:VEVENT
+UID:event-6@formulakite2026.com
+DTSTAMP:20260313T093543Z
+DTSTART:20260517T090000Z
+DTEND:20260517T180000Z
+SUMMARY:Formula Kite 2026 - Departure / Venue Closes
+DESCRIPTION:Encerramento do Recinto - Praia do Cabedelo, Viana do Castelo
+LOCATION:Praia do Cabedelo, Viana do Castelo, Portugal
+END:VEVENT
+END:VCALENDAR`;
+
               const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
               const url = window.URL.createObjectURL(blob);
               const a = document.createElement('a');
-              a.href = url; a.download = 'formula_kite_2026_schedule.ics'; a.click();
+              a.href = url;
+              a.download = 'formula_kite_2026_schedule.ics';
+              document.body.appendChild(a);
+              a.click();
+              document.body.removeChild(a);
           };
 
+          // 🏄 ATLETAS DATA (Atualizado com Info de Paris 2024 e LA 2028)
           const athleteProfiles = [
               { name: 'Axel Mazella', nat: 'FRA', flag: '🇫🇷', sail: '21', rank: 1, gear: 'Ozone / Levitaz', kites: '15m / 11m / 9m VMG', desc: lang === 'pt' ? 'Favorito com vento forte e águas mexidas.' : 'Favorite in strong winds and choppy waters.' },
               { name: 'Max Maeder', nat: 'SGP', flag: '🇸🇬', sail: '1', rank: 2, gear: 'Flysurfer', kites: '21m / 15m / 11m', desc: lang === 'pt' ? 'Campeão do mundo em título.' : 'Reigning world champion.' },
@@ -402,6 +394,7 @@
               { name: 'Mafalda Pires de Lima', nat: 'POR', flag: '🇵🇹', sail: '12', rank: 12, gear: 'F-One / Viana', kites: '15m / 11m', desc: lang === 'pt' ? '14º Lugar em Paris 2024. Integra o projeto Olímpico para LA 2028.' : '14th place in Paris 2024. Part of the Olympic project for LA 2028.' },
           ];
 
+          // 🏆 RESULTADOS DATA
           const resultsOverall = [
               { pos: 1, nat: 'FRA', flag: '🇫🇷', name: 'Axel Mazella', r1: 1, r2: 2, r3: 1, r4: '(5)', net: 4 },
               { pos: 2, nat: 'GBR', flag: '🇬🇧', name: 'Connor Bainbridge', r1: 3, r2: 1, r3: '(4)', r4: 2, net: 6 },
@@ -418,6 +411,7 @@
               { pos: 5, nat: 'POR', flag: '🇵🇹', name: 'Tomás Pires de Lima', status: 'SEMI-FINAL' },
           ];
 
+          // === DADOS KML OFICIAIS EXTRAÍDOS ===
           const kmlLocations = useMemo(() => [
               { id: 'race_groups', type: 'race', name: lang === 'pt' ? 'Qualificações (Race Area)' : 'Qualifiers (Race Area)', description: lang === 'pt' ? 'Área principal para as regatas de qualificação no oceano.' : 'Main zone for ocean qualifying races.', coords: [[41.680864,-8.849865],[41.685324,-8.859378],[41.682129,-8.868657],[41.671461,-8.870596],[41.667096,-8.859935],[41.670984,-8.847808]], iconStr: 'waves', icon: <MIcon name="waves" />, color: '#facc15', twColor: 'bg-yellow-500' },
               { id: 'race_finals', type: 'race', name: lang === 'pt' ? 'Finais (Race Area)' : 'Finals (Race Area)', description: lang === 'pt' ? 'Área reservada para a Medal Series (Finais).' : 'Reserved for the Medal Series (Finals).', coords: [[41.670146,-8.839606],[41.668041,-8.835275],[41.668890,-8.831358],[41.673116,-8.831389],[41.675537,-8.834998],[41.674686,-8.838955]], iconStr: 'trophy', icon: <MIcon name="trophy" />, color: '#facc15', twColor: 'bg-yellow-400' },
@@ -446,87 +440,184 @@
               return kmlLocations.filter(loc => activeFilters.includes(loc.type));
           }, [activeFilters, kmlLocations]);
 
+          // --- LEAFLET MAP EFFECT (ABA DE MAPA) ---
           const mapRef = useRef(null);
+
           useEffect(() => {
               if (activeTab !== 'map' || showSplash) return;
+              
               const mapId = 'real-map';
               const mapContainer = document.getElementById(mapId);
               if (!mapContainer || !window.L) return;
 
-              if (mapRef.current) { mapRef.current.off(); mapRef.current.remove(); mapRef.current = null; }
-              if (window.leafletMap) { window.leafletMap.off(); window.leafletMap.remove(); window.leafletMap = null; }
+              if (mapRef.current) {
+                  mapRef.current.off();
+                  mapRef.current.remove();
+                  mapRef.current = null;
+              }
+              if (window.leafletMap) {
+                  window.leafletMap.off();
+                  window.leafletMap.remove();
+                  window.leafletMap = null;
+              }
+              
               let domContainer = window.L.DomUtil.get(mapId);
-              if (domContainer) { domContainer._leaflet_id = null; domContainer.innerHTML = ''; }
+              if (domContainer) {
+                  domContainer._leaflet_id = null;
+                  domContainer.innerHTML = '';
+              }
 
               const map = window.L.map(mapId, { zoomControl: false }).setView([41.679, -8.836], 15);
-              mapRef.current = map; window.leafletMap = map;
+              mapRef.current = map;
+              window.leafletMap = map;
               
-              window.L.tileLayer('https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', { maxZoom: 20, attribution: '© Google' }).addTo(map);
+              window.L.tileLayer('https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
+                  maxZoom: 20,
+                  attribution: '© Google'
+              }).addTo(map);
 
-              kmlLines.forEach(line => window.L.polyline(line.coords, { color: line.color, weight: 4, dashArray: '5, 5' }).addTo(map));
+              kmlLines.forEach(line => {
+                  window.L.polyline(line.coords, { color: line.color, weight: 4, dashArray: '5, 5' }).addTo(map);
+              });
+
               kmlLocations.forEach(loc => {
-                  if (loc.coords.length > 2) window.L.polygon(loc.coords, { color: loc.color, fillColor: loc.color, fillOpacity: 0.4, weight: 2 }).addTo(map);
+                  if (loc.coords.length > 2) {
+                      window.L.polygon(loc.coords, {
+                          color: loc.color,
+                          fillColor: loc.color,
+                          fillOpacity: 0.4,
+                          weight: 2
+                      }).addTo(map);
+                  }
 
                   let latSum = 0, lngSum = 0;
                   loc.coords.forEach(c => { latSum += c[0]; lngSum += c[1]; });
                   const center = [latSum / loc.coords.length, lngSum / loc.coords.length];
+                  
                   const divIcon = window.L.divIcon({
                       className: 'leaflet-div-icon-custom',
-                      html: `<div class="${loc.twColor} w-8 h-8 rounded-xl shadow-[0_0_15px_rgba(0,0,0,0.5)] border-2 border-white flex items-center justify-center text-white cursor-pointer hover:scale-110 transition-transform" onclick="window.selectLocGlobal('${loc.id}')"><i data-lucide="${loc.iconStr}" style="width:16px;height:16px;"></i></div>`,
-                      iconSize: [32, 32], iconAnchor: [16, 16]
+                      html: `<div class="${loc.twColor} w-8 h-8 rounded-xl shadow-[0_0_15px_rgba(0,0,0,0.5)] border-2 border-white flex items-center justify-center text-white cursor-pointer hover:scale-110 transition-transform" onclick="window.selectLocGlobal('${loc.id}')">
+                               <i data-lucide="${loc.iconStr}" style="width:16px;height:16px;"></i>
+                             </div>`,
+                      iconSize: [32, 32],
+                      iconAnchor: [16, 16]
                   });
+
                   window.L.marker(center, {icon: divIcon}).addTo(map);
               });
               
-              setTimeout(() => { if(window.leafletMap) window.leafletMap.invalidateSize(); if(window.lucide) window.lucide.createIcons(); }, 200);
+              setTimeout(() => { 
+                  if(window.leafletMap) window.leafletMap.invalidateSize();
+                  if(window.lucide) window.lucide.createIcons(); 
+              }, 200);
 
               return () => {
-                  if (mapRef.current) { mapRef.current.off(); mapRef.current.remove(); mapRef.current = null; }
-                  if (window.leafletMap) window.leafletMap = null;
+                  if (mapRef.current) {
+                      mapRef.current.off();
+                      mapRef.current.remove();
+                      mapRef.current = null;
+                  }
+                  if (window.leafletMap) {
+                      window.leafletMap = null;
+                  }
                   let domC = document.getElementById(mapId);
-                  if (domC) { domC._leaflet_id = null; domC.innerHTML = ''; }
+                  if (domC) {
+                      domC._leaflet_id = null;
+                      domC.innerHTML = '';
+                  }
               };
           }, [activeTab, showSplash, kmlLocations]);
 
+          // --- LEAFLET TRACKING EFFECT ---
           const trackingMapRef = useRef(null);
           const markersRef = useRef({});
 
           useEffect(() => {
               if (activeTab !== 'tracking' || showSplash) return;
+              
               let timeoutId = setTimeout(() => {
                   const mapId = 'tracking-map';
                   const mapContainer = document.getElementById(mapId);
                   if (!mapContainer || !window.L) return;
 
-                  if (trackingMapRef.current) { trackingMapRef.current.off(); trackingMapRef.current.remove(); trackingMapRef.current = null; }
+                  if (trackingMapRef.current) {
+                      trackingMapRef.current.off();
+                      trackingMapRef.current.remove();
+                      trackingMapRef.current = null;
+                  }
                   let domContainer = window.L.DomUtil.get(mapId);
-                  if (domContainer) { domContainer._leaflet_id = null; domContainer.innerHTML = ''; }
+                  if (domContainer) {
+                      domContainer._leaflet_id = null;
+                      domContainer.innerHTML = '';
+                  }
                   
                   const map = window.L.map(mapId, { zoomControl: false }).setView([41.675, -8.855], 14);
                   trackingMapRef.current = map;
-                  window.L.tileLayer('https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', { maxZoom: 20, attribution: '© Google' }).addTo(map);
-                  kmlLines.forEach(line => window.L.polyline(line.coords, { color: line.color, weight: 4, dashArray: '5, 5' }).addTo(map));
-                  kmlLocations.filter(loc => loc.type === 'race').forEach(loc => {
-                      if (loc.coords.length > 2) window.L.polygon(loc.coords, { color: loc.color, fillColor: loc.color, fillOpacity: 0.4, weight: 2 }).addTo(map);
+                  
+                  window.L.tileLayer('https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
+                      maxZoom: 20,
+                      attribution: '© Google'
+                  }).addTo(map);
+
+                  kmlLines.forEach(line => {
+                      window.L.polyline(line.coords, { color: line.color, weight: 4, dashArray: '5, 5' }).addTo(map);
                   });
-                  setTimeout(() => { if(trackingMapRef.current) trackingMapRef.current.invalidateSize(); }, 200);
+
+                  kmlLocations.filter(loc => loc.type === 'race').forEach(loc => {
+                      if (loc.coords.length > 2) {
+                          window.L.polygon(loc.coords, {
+                              color: loc.color,
+                              fillColor: loc.color,
+                              fillOpacity: 0.4,
+                              weight: 2
+                          }).addTo(map);
+                      }
+                  });
+                  
+                  setTimeout(() => { 
+                      if(trackingMapRef.current) trackingMapRef.current.invalidateSize();
+                  }, 200);
               }, 100);
 
               return () => {
                   if (timeoutId) clearTimeout(timeoutId);
-                  if (trackingMapRef.current) { trackingMapRef.current.off(); trackingMapRef.current.remove(); trackingMapRef.current = null; markersRef.current = {}; }
+                  if (trackingMapRef.current) {
+                      trackingMapRef.current.off();
+                      trackingMapRef.current.remove();
+                      trackingMapRef.current = null;
+                      markersRef.current = {};
+                  }
                   let domC = document.getElementById('tracking-map');
-                  if (domC) { domC._leaflet_id = null; domC.innerHTML = ''; }
+                  if (domC) {
+                      domC._leaflet_id = null;
+                      domC.innerHTML = '';
+                  }
               };
           }, [activeTab, showSplash, kmlLocations]);
 
+          // ATUALIZAÇÃO DOS PINOS EM TEMPO REAL
           useEffect(() => {
               if (activeTab === 'tracking' && trackingMapRef.current && window.L) {
                   const map = trackingMapRef.current;
+                  
                   liveAthletes.forEach(a => {
-                      if (markersRef.current[a.id]) { markersRef.current[a.id].setLatLng([a.lat, a.lng]); } else {
-                          const iconHtml = `<div class="flex flex-col items-center group"><div class="bg-slate-900 text-white text-[9px] font-black px-1.5 py-0.5 rounded shadow-lg whitespace-nowrap mb-1 flex items-center gap-1 group-hover:scale-125 transition-transform border border-slate-700"><span>${a.flag}</span> ${a.sail}</div><div class="w-3 h-3 bg-red-500 rounded-full border-2 border-white shadow-[0_0_10px_rgba(239,68,68,0.8)] animate-pulse"></div></div>`;
-                          const divIcon = window.L.divIcon({ className: 'leaflet-div-icon-custom', html: iconHtml, iconSize: [40, 40], iconAnchor: [20, 40] });
+                      if (markersRef.current[a.id]) {
+                          markersRef.current[a.id].setLatLng([a.lat, a.lng]);
+                      } else {
+                          const iconHtml = `
+                              <div class="flex flex-col items-center group">
+                                  <div class="bg-slate-900 text-white text-[9px] font-black px-1.5 py-0.5 rounded shadow-lg whitespace-nowrap mb-1 flex items-center gap-1 group-hover:scale-125 transition-transform border border-slate-700">
+                                      <span>${a.flag}</span> ${a.sail}
+                                  </div>
+                                  <div class="w-3 h-3 bg-red-500 rounded-full border-2 border-white shadow-[0_0_10px_rgba(239,68,68,0.8)] animate-pulse"></div>
+                              </div>
+                          `;
+                          const divIcon = window.L.divIcon({
+                              className: 'leaflet-div-icon-custom',
+                              html: iconHtml,
+                              iconSize: [40, 40],
+                              iconAnchor: [20, 40]
+                          });
                           const marker = window.L.marker([a.lat, a.lng], { icon: divIcon }).addTo(map);
                           markersRef.current[a.id] = marker;
                       }
@@ -534,73 +625,36 @@
               }
           }, [liveAthletes, activeTab]);
 
-          useEffect(() => { window.selectLocGlobal = (id) => { const loc = kmlLocations.find(l => l.id === id); if(loc) setSelectedPoint(loc); }; }, [kmlLocations]);
+          useEffect(() => {
+              window.selectLocGlobal = (id) => {
+                  const loc = kmlLocations.find(l => l.id === id);
+                  if(loc) setSelectedPoint(loc);
+              };
+          }, [kmlLocations]);
 
           useEffect(() => {
               if (selectedPoint && window.leafletMap) {
-                  let latSum = 0, lngSum = 0; selectedPoint.coords.forEach(c => { latSum += c[0]; lngSum += c[1]; });
+                  let latSum = 0, lngSum = 0;
+                  selectedPoint.coords.forEach(c => { latSum += c[0]; lngSum += c[1]; });
                   const center = [latSum / selectedPoint.coords.length, lngSum / selectedPoint.coords.length];
                   window.leafletMap.flyTo(center, 17, { duration: 1.5 });
               }
           }, [selectedPoint]);
 
           const handleSendChat = async () => { 
-             if(!chatInput.trim()) return;
-             const userQuery = chatInput;
-             setChatHistory(prev => [...prev, { role: 'user', text: userQuery }]);
-             setChatInput(''); 
-             setIsTyping(true);
-
-             try {
-                 // A key é injetada nativamente pelo ambiente em tempo de execução
-                 const apiKey = "";
-                 const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
-                 
-                 // System Prompt: Dá personalidade e contexto à IA
-                 const systemPrompt = lang === 'pt' 
-                    ? "És o assistente oficial do Campeonato do Mundo de Formula Kite 2026 em Viana do Castelo. Responde de forma muito curta, amigável e direta. Foca-te em vela, kite, vento e regras. O limite de tempo da regata é 24m (qualificação) e 14m (finais). O hotel oficial é o FeelViana."
-                    : "You are the official assistant for the 2026 Formula Kite World Championships in Viana do Castelo. Answer very briefly, friendly, and directly. Focus on sailing, kite, wind, and rules. Race time limit is 24m qualifying, 14m finals. Official hotel is FeelViana.";
-
-                 const payload = {
-                     contents: [{ parts: [{ text: userQuery }] }],
-                     systemInstruction: { parts: [{ text: systemPrompt }] }
-                 };
-
-                 // Lógica de retentativa em caso de falha na rede
-                 const fetchWithRetry = async (url, options, retries = 5) => {
-                     const delays = [1000, 2000, 4000, 8000, 16000];
-                     for (let i = 0; i < retries; i++) {
-                         try {
-                             const response = await fetch(url, options);
-                             if (!response.ok) throw new Error(`HTTP erro ${response.status}`);
-                             return await response.json();
-                         } catch (e) {
-                             if (i === retries - 1) throw e;
-                             await new Promise(res => setTimeout(res, delays[i]));
-                         }
-                     }
-                 };
-
-                 const result = await fetchWithRetry(url, {
-                     method: 'POST',
-                     headers: { 'Content-Type': 'application/json' },
-                     body: JSON.stringify(payload)
-                 });
-
-                 // Extração da resposta e atualização do chat
-                 const replyText = result.candidates?.[0]?.content?.parts?.[0]?.text || (lang === 'pt' ? "Desculpa, falha na comunicação." : "Sorry, communication failed.");
-                 setChatHistory(prev => [...prev, { role: 'model', text: replyText }]);
-
-             } catch (error) {
-                 setChatHistory(prev => [...prev, { role: 'model', text: lang === 'pt' ? "Erro de ligação à API. Verifica a tua internet e tenta mais tarde." : "API connection error. Check your internet and try again later." }]);
-             } finally {
+             if(!chatInput) return;
+             setChatHistory(prev => [...prev, { role: 'user', text: chatInput }]);
+             setChatInput(''); setIsTyping(true);
+             setTimeout(() => {
+                 setChatHistory(prev => [...prev, { role: 'model', text: lang === 'pt' ? 'A Formula Kite é uma classe olímpica de extrema velocidade e tática! A nortada em Viana é ideal para estas pranchas hydrofoil.' : 'Formula Kite is an extremely fast and tactical Olympic class! The Nortada wind in Viana is ideal for these hydrofoils.' }]);
                  setIsTyping(false);
-             }
+             }, 1500);
           };
 
           return (
             <div className={isDarkMode ? 'dark' : ''}>
               
+              {/* === SPLASH SCREEN PROFISSIONAL === */}
               {showSplash && (
                   <div className={`absolute inset-0 z-[100] flex flex-col items-center justify-center bg-slate-900 transition-opacity duration-500 ease-in-out ${splashFadeOut ? 'opacity-0' : 'opacity-100'}`}>
                       <img src="image_11335c.png" alt="Formula Kite Logo" className="h-24 md:h-32 lg:h-40 mb-6 animate-pulse object-contain drop-shadow-[0_0_15px_rgba(255,255,255,0.1)]" />
@@ -615,6 +669,7 @@
 
               <div className="flex flex-col h-[100dvh] bg-slate-50 dark:bg-slate-950 font-sans text-slate-900 dark:text-slate-100 overflow-hidden transition-colors duration-300 relative">
                 
+                {/* === MODAL DE REALIDADE AUMENTADA (AR SIMULATOR) === */}
                 {showAR && (
                     <div className="absolute inset-0 z-50 ar-background overflow-hidden flex flex-col animate-in fade-in duration-500">
                         <div className="absolute top-0 left-0 w-full h-[2px] bg-emerald-400/50 shadow-[0_0_20px_4px_rgba(52,211,153,0.5)] animate-scanline z-10 pointer-events-none"></div>
@@ -657,8 +712,11 @@
                     </div>
                 )}
 
+                {/* === HEADER PRINCIPAL C/ BRANDING OFICIAL === */}
                 <header className="bg-slate-900 dark:bg-black text-white z-40 shadow-xl shrink-0 flex flex-col relative">
-                  <div className="bg-slate-950/50 border-b border-white/5 py-1.5 px-4 lg:px-6 justify-between items-center text-[9px] lg:text-[10px] text-slate-400 uppercase tracking-widest hidden sm:flex">
+                  
+                  {/* Top Ribbon - Partners */}
+                  <div className="bg-slate-950/50 border-b border-white/5 py-1.5 px-4 lg:px-6 flex justify-between items-center text-[9px] lg:text-[10px] text-slate-400 uppercase tracking-widest hidden sm:flex">
                      <span className="font-bold text-emerald-500 flex items-center gap-1.5"><MIcon name="smartphone" size={12}/> {t.officialApp}</span>
                      <div className="flex items-center gap-4">
                          <span>{t.partners}</span>
@@ -670,8 +728,10 @@
                      </div>
                   </div>
 
+                  {/* Main Header Area */}
                   <div className="px-4 py-3 lg:px-6 lg:py-4 flex flex-col lg:flex-row lg:items-center justify-between gap-3 lg:gap-4 border-b border-slate-800">
                       <div className="flex items-center justify-between w-full lg:w-auto">
+                          {/* Logo e Título com Subtítulo e Bandeira */}
                           <div className="flex items-center gap-3 lg:gap-4">
                             <img src="image_11335c.png" alt="Formula Kite Logo" className="h-14 md:h-16 lg:h-20 shrink-0 object-contain drop-shadow-[0_2px_10px_rgba(255,255,255,0.15)]" />
                             <div>
@@ -685,11 +745,13 @@
                             </div>
                           </div>
                           
+                          {/* Mobile Right Controls */}
                           <div className="flex items-center gap-2 lg:hidden">
                             <button onClick={toggleFullscreen} className="p-2 rounded-full hover:bg-white/10 text-white"><MIcon name={isFullscreen ? "minimize" : "maximize"} size={18} /></button>
                           </div>
                       </div>
                       
+                      {/* Nav Bar */}
                       <nav className="flex bg-white/5 dark:bg-white/10 p-1.5 rounded-xl border border-white/10 dark:border-white/5 backdrop-blur-md gap-1 overflow-x-auto no-scrollbar pb-1.5 lg:pb-1.5 items-center w-full lg:w-auto">
                         {[
                             { id: 'tracking', icon: 'crosshair', label: t.tabTracking },
@@ -706,6 +768,7 @@
                             </button>
                         ))}
                         
+                        {/* Desktop Side Controls */}
                         <div className="hidden lg:flex items-center gap-2 ml-2 pl-3 border-l border-white/10">
                             <button onClick={toggleFullscreen} className="p-2 rounded-lg hover:bg-white/10 text-slate-300 hover:text-white transition-colors" title="Fullscreen"><MIcon name={isFullscreen ? "minimize" : "maximize"} size={16} /></button>
                         </div>
@@ -713,8 +776,10 @@
                   </div>
                 </header>
 
+                {/* === CONTEÚDO PRINCIPAL === */}
                 <div className={`flex-1 flex overflow-hidden ${activeTab === 'map' || activeTab === 'tracking' ? 'flex-col lg:flex-row' : 'flex-col'}`}>
                   
+                  {/* 1️⃣ MAPA GOOGLE EARTH */}
                   {activeTab === 'map' ? (
                     <>
                       <main className="flex-none h-[50vh] lg:h-auto lg:flex-1 relative overflow-hidden bg-slate-900 transition-colors duration-300">
@@ -805,6 +870,7 @@
                       </aside>
                     </>
                   ) : activeTab === 'tracking' ? (
+                      /* 2️⃣ LIVE TRACKING VIEW */
                       <>
                         <main className="flex-none h-[50vh] lg:h-auto lg:flex-1 relative overflow-hidden bg-slate-900 transition-colors duration-300">
                           <div className={`absolute inset-0 z-10 ${isDarkMode ? 'brightness-75 saturate-150 contrast-125' : ''}`}>
@@ -856,6 +922,7 @@
                         </aside>
                       </>
                   ) : activeTab === 'results' ? (
+                      /* 🏆 SECÇÃO DE RESULTADOS */
                       <div className="flex-1 overflow-y-auto bg-slate-50 dark:bg-slate-950 p-4 lg:p-12 animate-in fade-in duration-500">
                           <div className="max-w-6xl mx-auto">
                               <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
@@ -926,6 +993,7 @@
                           </div>
                       </div>
                   ) : activeTab === 'athletes' ? (
+                      /* 🏄 SECÇÃO ATLETAS */
                       <div className="flex-1 overflow-y-auto bg-slate-50 dark:bg-slate-950 p-4 lg:p-12 animate-in fade-in duration-500">
                           <div className="max-w-7xl mx-auto">
                               <h2 className="text-3xl font-black text-slate-900 dark:text-white uppercase mb-8 flex items-center gap-3">
@@ -968,6 +1036,7 @@
                           </div>
                       </div>
                   ) : activeTab === 'hotel' ? (
+                      /* 🏨 SECÇÃO HOTEL FEELVIANA */
                       <div className="flex-1 overflow-y-auto bg-slate-50 dark:bg-slate-950 p-4 lg:p-12 animate-in fade-in duration-500">
                           <div className="max-w-4xl mx-auto space-y-8">
                               <div className="w-full bg-slate-900 rounded-[2rem] relative overflow-hidden shadow-2xl border border-slate-800">
@@ -1009,6 +1078,7 @@
                           </div>
                       </div>
                   ) : activeTab === 'schedule' ? (
+                    /* 📅 SECÇÃO CALENDÁRIO ATUALIZADA COM O HOSTING AGREEMENT */
                     <div className="flex-1 overflow-y-auto bg-slate-50 dark:bg-slate-950 p-4 lg:p-12 animate-in fade-in duration-500 transition-colors">
                       <div className="max-w-4xl mx-auto pb-8">
                         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 lg:gap-6 mb-6 lg:mb-12 bg-white dark:bg-slate-900 p-6 lg:p-8 rounded-2xl lg:rounded-[2.5rem] shadow-sm border border-slate-100 dark:border-slate-800 transition-colors">
@@ -1151,13 +1221,13 @@
                         </div>
                       </div>
                   ) : (
-                      /* Settings & PWA Configs (Cleaned) */
+                      /* Settings */
                       <div className="flex-1 overflow-y-auto bg-slate-50 dark:bg-slate-950 p-4 lg:p-12 animate-in fade-in duration-500 transition-colors">
                           <div className="max-w-4xl mx-auto pb-12">
                               <h2 className="text-2xl lg:text-3xl font-black mb-8 dark:text-white mt-4">{t.settingsTitle}</h2>
                               
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                  {/* Coluna 1: Definições da App & Notificações */}
+                                  {/* Coluna 1: Definições da App */}
                                   <div className="space-y-6">
                                       <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-800 transition-colors">
                                           <h3 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-4 flex items-center gap-2">
@@ -1175,44 +1245,13 @@
                                           </h3>
                                           <div className="grid grid-cols-2 gap-3">
                                               <button onClick={() => setIsDarkMode(false)} className={`py-3 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 border-2 ${!isDarkMode ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 shadow-sm' : 'border-transparent bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'}`}>
-                                                  <MIcon name="sun" size={16} /> {lang === 'pt' ? 'Claro' : 'Light'}
+                                                  <MIcon name="sun" size={16} /> {t.themeLight}
                                               </button>
                                               <button onClick={() => setIsDarkMode(true)} className={`py-3 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 border-2 ${isDarkMode ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 shadow-sm' : 'border-transparent bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'}`}>
-                                                  <MIcon name="moon" size={16} /> {lang === 'pt' ? 'Escuro' : 'Dark'}
+                                                  <MIcon name="moon" size={16} /> {t.themeDark}
                                               </button>
                                           </div>
                                       </div>
-
-                                      {/* --- BLOCO PWA / NOTIFICAÇÕES PUSH --- */}
-                                      <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-800 transition-colors">
-                                          <h3 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-4 flex items-center gap-2">
-                                              <MIcon name="bell" size={16} /> {t.settingsPwa}
-                                          </h3>
-                                          <div className="space-y-3">
-                                              <p className="text-xs text-slate-500 mb-4">
-                                                  {lang === 'pt' ? 'Recebe alertas em tempo real sobre bandeiras verdes, resultados e avisos da regata diretamente no teu ecrã.' : 'Get real-time alerts on green flags, results, and race warnings directly on your screen.'}
-                                              </p>
-
-                                              <button 
-                                                  onClick={toggleRealPush} 
-                                                  disabled={isSubscribing}
-                                                  className={`w-full py-3 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 border-2 ${
-                                                      isPushEnabled 
-                                                      ? 'border-emerald-500 bg-emerald-500 text-white shadow-md hover:bg-emerald-600' 
-                                                      : 'border-slate-200 dark:border-slate-700 bg-transparent text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'
-                                                  }`}
-                                              >
-                                                  {isSubscribing ? (
-                                                      <MIcon name="loader" size={16} className="animate-spin" />
-                                                  ) : isPushEnabled ? (
-                                                      <><MIcon name="check-circle" size={16} /> {lang === 'pt' ? 'Notificações Ativas' : 'Notifications On'}</>
-                                                  ) : (
-                                                      <><MIcon name="bell" size={16} /> {lang === 'pt' ? 'Ativar Notificações' : 'Enable Notifications'}</>
-                                                  )}
-                                              </button>
-                                          </div>
-                                      </div>
-
                                   </div>
 
                                   {/* Coluna 2: Parceiros Institucionais */}
