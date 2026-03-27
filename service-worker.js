@@ -1,74 +1,67 @@
 // service-worker.js - Formula Kite 2026 PWA
 
-const CACHE_NAME = 'viana-2026-v1';
+const CACHE_NAME = 'viana-2026-v2';
 const ASSETS_TO_CACHE = [
     '/',
     '/index.html',
     '/acesso.html',
     '/icon.png',
-    '/image_11335c.png'
+    '/image_11335c.png',
+    '/manifest.json'
 ];
 
-// 1. Instalação do Service Worker (Cache de assets iniciais para modo Offline)
+// 1. Instalação do Service Worker (Cache offline)
 self.addEventListener('install', (event) => {
-    console.log('[Service Worker] Instalado. Preparando PWA Offline...');
+    console.log('[SW] Instalado.');
+    self.skipWaiting(); // Ativa imediatamente
     event.waitUntil(
-        caches.open(CACHE_NAME)
-            .then((cache) => {
-                console.log('[Service Worker] A fazer cache dos ficheiros principais');
-                return cache.addAll(ASSETS_TO_CACHE);
-            })
-            .then(() => self.skipWaiting()) // Força a ativação imediata
+        caches.open(CACHE_NAME).then((cache) => {
+            return cache.addAll(ASSETS_TO_CACHE);
+        }).catch(err => console.log('[SW] Erro no cache:', err))
     );
 });
 
-// 2. Ativação (Limpeza de caches antigos quando atualizas a App)
+// 2. Ativação (Limpa caches antigos)
 self.addEventListener('activate', (event) => {
-    console.log('[Service Worker] Ativado.');
+    console.log('[SW] Ativado.');
     event.waitUntil(
         caches.keys().then((cacheNames) => {
             return Promise.all(
                 cacheNames.map((cacheName) => {
                     if (cacheName !== CACHE_NAME) {
-                        console.log('[Service Worker] A apagar cache antigo:', cacheName);
                         return caches.delete(cacheName);
                     }
                 })
             );
-        }).then(() => self.clients.claim()) // Assume controlo imediato das páginas abertas
+        }).then(() => self.clients.claim())
     );
 });
 
-// 3. Estratégia Fetch: Tentar a rede, cair para o Cache (ideal para apps dinâmicas)
+// 3. Fetch (Modo Offline)
 self.addEventListener('fetch', (event) => {
-    // Ignora chamadas para APIs externas (ex: Leaflet, mapas do Google)
-    if (!event.request.url.startsWith(self.location.origin)) {
-        return;
-    }
-
+    if (!event.request.url.startsWith(self.location.origin)) return;
     event.respondWith(
-        fetch(event.request).catch(() => {
-            return caches.match(event.request);
-        })
+        fetch(event.request).catch(() => caches.match(event.request))
     );
 });
 
-// 4. Evento Principal de Push Notifications (Recebe do Servidor e mostra ao Cliente)
+// ---------------------------------------------------------
+// 4. PUSH NOTIFICATIONS REAIS (Recebe do Servidor)
+// ---------------------------------------------------------
 self.addEventListener('push', (event) => {
-    console.log('[Service Worker] Push Recebido.');
+    console.log('[SW] Mensagem Push Real Recebida!');
     
-    // Payload por defeito caso falhe
+    // Fallback de segurança se o servidor enviar payload vazio
     let data = { 
-        title: 'Viana 2026 🏁', 
-        body: 'Nova atualização do evento!' 
+        title: 'Viana 2026', 
+        body: 'Nova notificação da organização.',
+        url: '/'
     };
     
     if (event.data) {
         try {
-            // Tenta processar o payload enviado pelo servidor como JSON
-            data = event.data.json();
+            data = event.data.json(); // O teu servidor deve enviar um JSON
         } catch (e) {
-            // Se for apenas texto simples
             data.body = event.data.text();
         }
     }
@@ -76,36 +69,31 @@ self.addEventListener('push', (event) => {
     const options = {
         body: data.body,
         icon: '/icon.png',
-        badge: '/icon.png', // Ícone pequeno na barra de notificações do Android
-        vibrate: [200, 100, 200, 100, 200], // Padrão de vibração dinâmico
-        requireInteraction: true, // Mantém a notificação visível até o utilizador clicar/fechar
-        data: { 
-            url: '/' // Onde o utilizador vai parar se clicar na notificação
-        }
+        badge: '/icon.png',
+        vibrate: [200, 100, 200, 100, 200],
+        requireInteraction: true,
+        data: { url: data.url || '/' }
     };
 
+    // Dispara a notificação para o ecrã do telemóvel
     event.waitUntil(
         self.registration.showNotification(data.title, options)
     );
 });
 
-// 5. Ação ao clicar na Notificação (Abre ou traz a App para primeiro plano)
+// 5. Ação ao clicar na Notificação
 self.addEventListener('notificationclick', (event) => {
-    console.log('[Service Worker] Clique na notificação detetado.');
-    
-    // Fecha a notificação do ecrã
+    console.log('[SW] Clique na notificação.');
     event.notification.close();
     
     event.waitUntil(
         clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
-            // Se a app já estiver aberta em segundo plano, traz para a frente (foca)
             for (let i = 0; i < windowClients.length; i++) {
                 const client = windowClients[i];
                 if (client.url === self.registration.scope && 'focus' in client) {
                     return client.focus();
                 }
             }
-            // Se a app estiver fechada, abre-a
             if (clients.openWindow) {
                 return clients.openWindow(event.notification.data.url);
             }
