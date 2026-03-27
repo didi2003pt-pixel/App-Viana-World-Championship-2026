@@ -99,59 +99,6 @@
     <script type="text/babel">
         const { useState, useMemo, useRef, useEffect } = React;
 
-        // --- CÓDIGO DO SERVICE WORKER (Para download & PWA real) ---
-        const PWA_SW_CODE = `// service-worker.js - Formula Kite 2026 PWA
-self.addEventListener('install', (event) => {
-    console.log('[Service Worker] Instalado. Preparando PWA Offline...');
-    self.skipWaiting();
-});
-
-self.addEventListener('activate', (event) => {
-    console.log('[Service Worker] Ativado.');
-    return self.clients.claim();
-});
-
-// Evento Principal de Push Notifications (Servidor para o Cliente)
-self.addEventListener('push', (event) => {
-    console.log('[Service Worker] Push Recebido.');
-    let data = { title: 'Viana 2026 🏁', body: 'Nova atualização do evento!' };
-    
-    if (event.data) {
-        try {
-            data = event.data.json();
-        } catch (e) {
-            data.body = event.data.text();
-        }
-    }
-
-    const options = {
-        body: data.body,
-        icon: 'icon.png',
-        badge: 'icon.png',
-        vibrate: [200, 100, 200, 100, 200],
-        requireInteraction: true,
-        data: { url: '/' }
-    };
-
-    event.waitUntil(
-        self.registration.showNotification(data.title, options)
-    );
-});
-
-// Ação ao clicar na Notificação (Abre a App)
-self.addEventListener('notificationclick', (event) => {
-    console.log('[Service Worker] Clique na notificação detetado.');
-    event.notification.close();
-    event.waitUntil(
-        clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
-            if (windowClients.length > 0) {
-                if ('focus' in windowClients[0]) return windowClients[0].focus();
-            }
-            return clients.openWindow(event.notification.data.url);
-        })
-    );
-});`;
-
         // --- Configuração Segura dos Ícones ---
         const Icon = ({ name, size = 24, className = "" }) => {
             const spanRef = useRef(null);
@@ -172,7 +119,7 @@ self.addEventListener('notificationclick', (event) => {
         };
         const MIcon = (p) => <Icon {...p} />;
 
-        // --- DICIONÁRIO DE IDIOMAS (Atualizado c/ PWA) ---
+        // --- DICIONÁRIO DE IDIOMAS ---
         const dict = {
             pt: {
                 officialApp: "App Oficial", partners: "Parceiros Oficiais:",
@@ -209,17 +156,10 @@ self.addEventListener('notificationclick', (event) => {
                 partnerFeelVianaDesc: "Alojamento oficial e parceiro logístico.",
                 partnerNorteDesc: "Turismo do Porto e Norte - Promoção da região.",
                 qualifiersLabel: "QUALIFICAÇÕES", finalsLabel: "FINAIS",
-                // Novas Labels PWA
-                settingsPwa: "Notificações & PWA",
-                pwaEnable: "Ativar Notificações",
-                pwaActive: "Notificações Ativas",
-                pwaTest1: "Testar: Regata",
-                pwaTest2: "Testar: Vento",
-                pwaDownload: "Descarregar service-worker.js",
-                pushRaceTitle: "Viana 2026 🏁",
-                pushRaceBody: "A Regata da Medal Series vai começar em 10 minutos!",
-                pushWindTitle: "Condições 🌬️",
-                pushWindBody: "O vento atingiu os 18 nós, bandeira verde!"
+                settingsPwa: "Notificações & PWA", pwaEnable: "Ativar Notificações", pwaActive: "Notificações Ativas",
+                pwaTest1: "Testar: Regata", pwaTest2: "Testar: Vento",
+                pushRaceTitle: "Viana 2026 🏁", pushRaceBody: "A Regata da Medal Series vai começar em 10 minutos!",
+                pushWindTitle: "Condições 🌬️", pushWindBody: "O vento atingiu os 18 nós, bandeira verde!"
             },
             en: {
                 officialApp: "Official App", partners: "Official Partners:",
@@ -256,17 +196,10 @@ self.addEventListener('notificationclick', (event) => {
                 partnerFeelVianaDesc: "Official accommodation and logistics.",
                 partnerNorteDesc: "Porto and North Tourism Board - Regional promotion.",
                 qualifiersLabel: "QUALIFIERS", finalsLabel: "FINALS",
-                // New PWA Labels
-                settingsPwa: "Push Notifications",
-                pwaEnable: "Enable Notifications",
-                pwaActive: "Notifications Active",
-                pwaTest1: "Test: Race",
-                pwaTest2: "Test: Wind",
-                pwaDownload: "Download service-worker.js",
-                pushRaceTitle: "Viana 2026 🏁",
-                pushRaceBody: "The Medal Series Race will start in 10 minutes!",
-                pushWindTitle: "Conditions 🌬️",
-                pushWindBody: "Wind reached 18 knots, green flag!"
+                settingsPwa: "Push Notifications", pwaEnable: "Enable Notifications", pwaActive: "Notifications Active",
+                pwaTest1: "Test: Race", pwaTest2: "Test: Wind",
+                pushRaceTitle: "Viana 2026 🏁", pushRaceBody: "The Medal Series Race will start in 10 minutes!",
+                pushWindTitle: "Conditions 🌬️", pushWindBody: "Wind reached 18 knots, green flag!"
             }
         };
 
@@ -286,17 +219,11 @@ self.addEventListener('notificationclick', (event) => {
           useEffect(() => {
               if (window.Notification) setPushStatus(Notification.permission);
               
-              // Registo do Service Worker Dinâmico para suporte no Canvas Preview
+              // Registo do Service Worker Real (Produção)
               if ('serviceWorker' in navigator) {
-                  try {
-                      const blob = new Blob([PWA_SW_CODE], { type: 'application/javascript' });
-                      const swUrl = URL.createObjectURL(blob);
-                      navigator.serviceWorker.register(swUrl)
-                          .then(reg => console.log('PWA Service Worker Ativado (Blob Mode)'))
-                          .catch(err => console.log('Normal ignorar em preview:', err));
-                  } catch (e) {
-                      console.log('Erro Blob SW', e);
-                  }
+                  navigator.serviceWorker.register('/service-worker.js')
+                      .then(reg => console.log('PWA Service Worker Registado com sucesso! scope:', reg.scope))
+                      .catch(err => console.log('Erro ao registar o Service Worker:', err));
               }
           }, []);
 
@@ -319,7 +246,6 @@ self.addEventListener('notificationclick', (event) => {
               const title = type === 'race' ? t.pushRaceTitle : t.pushWindTitle;
               const body = type === 'race' ? t.pushRaceBody : t.pushWindBody;
 
-              // Testa SW Registration primeiro para Notificações Nativas do Sistema
               if ('serviceWorker' in navigator) {
                   const reg = await navigator.serviceWorker.getRegistration();
                   if (reg && reg.active) {
@@ -332,19 +258,7 @@ self.addEventListener('notificationclick', (event) => {
                   }
               }
               
-              // Fallback para Notificação de Browser Padrão
               new Notification(title, { body: body, icon: 'icon.png' });
-          };
-
-          const downloadServiceWorker = () => {
-              const blob = new Blob([PWA_SW_CODE], { type: 'application/javascript' });
-              const url = window.URL.createObjectURL(blob);
-              const a = document.createElement('a');
-              a.href = url;
-              a.download = 'service-worker.js';
-              document.body.appendChild(a);
-              a.click();
-              document.body.removeChild(a);
           };
 
           const [activeTab, setActiveTab] = useState('tracking'); 
@@ -1159,7 +1073,7 @@ self.addEventListener('notificationclick', (event) => {
                         </div>
                       </div>
                   ) : (
-                      /* Settings & PWA Configs */
+                      /* Settings & PWA Configs (Cleaned) */
                       <div className="flex-1 overflow-y-auto bg-slate-50 dark:bg-slate-950 p-4 lg:p-12 animate-in fade-in duration-500 transition-colors">
                           <div className="max-w-4xl mx-auto pb-12">
                               <h2 className="text-2xl lg:text-3xl font-black mb-8 dark:text-white mt-4">{t.settingsTitle}</h2>
@@ -1216,10 +1130,6 @@ self.addEventListener('notificationclick', (event) => {
                                                       </button>
                                                   </div>
                                               )}
-
-                                              <button onClick={downloadServiceWorker} className="w-full mt-4 py-2 rounded-lg font-semibold text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 flex items-center justify-center gap-1.5 transition-colors group">
-                                                  <MIcon name="download" size={14} className="group-hover:text-emerald-500 transition-colors" /> <span className="underline">{t.pwaDownload}</span>
-                                              </button>
                                           </div>
                                       </div>
 
