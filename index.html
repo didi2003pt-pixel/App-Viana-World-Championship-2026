@@ -216,52 +216,83 @@
               return () => { clearTimeout(fadeTimer); clearTimeout(removeTimer); };
           }, []);
 
-          // --- PWA & PUSH NOTIFICATIONS REGISTRATION ---
-          const [pushStatus, setPushStatus] = useState('default');
+          // --- PWA & PUSH NOTIFICATIONS REAIS ---
+          const [isPushEnabled, setIsPushEnabled] = useState(false);
+          const [isSubscribing, setIsSubscribing] = useState(false);
+
+          // Função auxiliar para converter a Chave VAPID
+          const urlB64ToUint8Array = (base64String) => {
+              const padding = '='.repeat((4 - base64String.length % 4) % 4);
+              const base64 = (base64String + padding).replace(/\-/g, '+').replace(/_/g, '/');
+              const rawData = window.atob(base64);
+              const outputArray = new Uint8Array(rawData.length);
+              for (let i = 0; i < rawData.length; ++i) outputArray[i] = rawData.charCodeAt(i);
+              return outputArray;
+          };
 
           useEffect(() => {
-              if (window.Notification) setPushStatus(Notification.permission);
-              
-              // Registo do Service Worker Real (Produção)
+              // 1. Registar Service Worker
               if ('serviceWorker' in navigator) {
                   navigator.serviceWorker.register('/service-worker.js')
-                      .then(reg => console.log('PWA Service Worker Registado com sucesso! scope:', reg.scope))
-                      .catch(err => console.log('Erro ao registar o Service Worker:', err));
+                      .then(reg => {
+                          console.log('SW Registado!');
+                          // 2. Verificar se o utilizador já tem as notificações ligadas
+                          if ('PushManager' in window) {
+                              reg.pushManager.getSubscription().then(sub => {
+                                  setIsPushEnabled(sub !== null);
+                              });
+                          }
+                      })
+                      .catch(err => console.log('Erro no SW:', err));
               }
           }, []);
 
-          const handleEnablePush = async () => {
-              if (!('Notification' in window)) {
-                  console.warn("Browser não suporta notificações web.");
+          // Botão Ativar / Desativar Notificações Reais
+          const toggleRealPush = async () => {
+              if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+                  alert(lang === 'pt' ? 'O teu browser não suporta Notificações Push.' : 'Browser does not support Push.');
                   return;
               }
+
+              setIsSubscribing(true);
               try {
-                  const permission = await Notification.requestPermission();
-                  setPushStatus(permission);
-              } catch (error) {
-                  console.error('Erro de permissão Push:', error);
-              }
-          };
+                  const reg = await navigator.serviceWorker.ready;
+                  
+                  if (isPushEnabled) {
+                      // DESATIVAR: Remover subscrição
+                      const sub = await reg.pushManager.getSubscription();
+                      if (sub) {
+                          await sub.unsubscribe();
+                          console.log('Notificações Desativadas.');
+                          // Idealmente, aqui fazias um fetch() para o teu backend remover este token
+                      }
+                      setIsPushEnabled(false);
+                  } else {
+                      // ATIVAR: Pedir permissão e Subescrever
+                      const permission = await Notification.requestPermission();
+                      if (permission !== 'granted') throw new Error('Permissão negada.');
 
-          const handleTestPush = async (type) => {
-              if (pushStatus !== 'granted') return;
-              
-              const title = type === 'race' ? t.pushRaceTitle : t.pushWindTitle;
-              const body = type === 'race' ? t.pushRaceBody : t.pushWindBody;
-
-              if ('serviceWorker' in navigator) {
-                  const reg = await navigator.serviceWorker.getRegistration();
-                  if (reg && reg.active) {
-                      reg.showNotification(title, {
-                          body: body,
-                          icon: 'icon.png',
-                          vibrate: [200, 100, 200, 100, 200]
+                      // CHAVE VAPID PÚBLICA MOCK (Aviso: Em produção, tens de gerar uma tua e ter um servidor)
+                      // Esta chave serve apenas para a API do Browser deixar gerar o Token
+                      const publicVapidKey = 'BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjBJuBkr3qBUYIHBQFLXYp5Nksh8U';
+                      const applicationServerKey = urlB64ToUint8Array(publicVapidKey);
+                      
+                      const subscription = await reg.pushManager.subscribe({
+                          userVisibleOnly: true,
+                          applicationServerKey: applicationServerKey
                       });
-                      return;
+                      
+                      console.log('A TUA SUBSCRIÇÃO (Envia isto para o teu servidor backend):', JSON.stringify(subscription));
+                      // Aqui em produção farias algo como:
+                      // fetch('https://teu-servidor.com/api/guardar-subscricao', { method: 'POST', body: JSON.stringify(subscription) });
+
+                      setIsPushEnabled(true);
                   }
+              } catch (error) {
+                  console.error('Erro no Toggle Push:', error);
+              } finally {
+                  setIsSubscribing(false);
               }
-              
-              new Notification(title, { body: body, icon: 'icon.png' });
           };
 
           const [activeTab, setActiveTab] = useState('tracking'); 
@@ -1158,25 +1189,27 @@
                                               <MIcon name="bell" size={16} /> {t.settingsPwa}
                                           </h3>
                                           <div className="space-y-3">
-                                              <button 
-                                                  onClick={handleEnablePush} 
-                                                  disabled={pushStatus === 'granted'}
-                                                  className={`w-full py-3 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 border-2 ${pushStatus === 'granted' ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 shadow-sm opacity-90 cursor-default' : 'border-emerald-500 text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 shadow-sm'}`}
-                                              >
-                                                  <MIcon name={pushStatus === 'granted' ? "check-circle" : "bell-ring"} size={16} /> 
-                                                  {pushStatus === 'granted' ? t.pwaActive : t.pwaEnable}
-                                              </button>
+                                              <p className="text-xs text-slate-500 mb-4">
+                                                  {lang === 'pt' ? 'Recebe alertas em tempo real sobre bandeiras verdes, resultados e avisos da regata diretamente no teu ecrã.' : 'Get real-time alerts on green flags, results, and race warnings directly on your screen.'}
+                                              </p>
 
-                                              {pushStatus === 'granted' && (
-                                                  <div className="grid grid-cols-2 gap-3 mt-3 animate-in fade-in slide-in-from-top-2">
-                                                      <button onClick={() => handleTestPush('race')} className="py-2.5 rounded-lg font-bold text-xs bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 flex flex-col items-center justify-center gap-1 border border-slate-200 dark:border-slate-700 transition-colors shadow-sm">
-                                                          <MIcon name="flag" size={14} className="text-blue-500" /> {t.pwaTest1}
-                                                      </button>
-                                                      <button onClick={() => handleTestPush('wind')} className="py-2.5 rounded-lg font-bold text-xs bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 flex flex-col items-center justify-center gap-1 border border-slate-200 dark:border-slate-700 transition-colors shadow-sm">
-                                                          <MIcon name="wind" size={14} className="text-emerald-500" /> {t.pwaTest2}
-                                                      </button>
-                                                  </div>
-                                              )}
+                                              <button 
+                                                  onClick={toggleRealPush} 
+                                                  disabled={isSubscribing}
+                                                  className={`w-full py-3 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 border-2 ${
+                                                      isPushEnabled 
+                                                      ? 'border-emerald-500 bg-emerald-500 text-white shadow-md hover:bg-emerald-600' 
+                                                      : 'border-slate-200 dark:border-slate-700 bg-transparent text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'
+                                                  }`}
+                                              >
+                                                  {isSubscribing ? (
+                                                      <MIcon name="loader" size={16} className="animate-spin" />
+                                                  ) : isPushEnabled ? (
+                                                      <><MIcon name="check-circle" size={16} /> {lang === 'pt' ? 'Notificações Ativas' : 'Notifications On'}</>
+                                                  ) : (
+                                                      <><MIcon name="bell" size={16} /> {lang === 'pt' ? 'Ativar Notificações' : 'Enable Notifications'}</>
+                                                  )}
+                                              </button>
                                           </div>
                                       </div>
 
