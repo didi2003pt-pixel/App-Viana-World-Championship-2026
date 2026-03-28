@@ -13,8 +13,7 @@
     <!-- SISTEMA DE BLOQUEIO / ACESSO -->
     <script>
         // Verifica se o utilizador submeteu o formulário de acesso
-        // DESATIVADO temporariamente para testares localmente sem o erro do "acesso.html"
-        /*
+        // Se a chave 'acesso_permitido' não for 'sim', redireciona para a página de login
         try {
             if (localStorage.getItem('acesso_permitido') !== 'sim') {
                 if (window.location.protocol !== 'blob:' && window.location.protocol !== 'data:') {
@@ -26,7 +25,6 @@
         } catch (error) {
             console.error("Erro ao tentar redirecionar:", error);
         }
-        */
     </script>
     
     <!-- Leaflet CSS para Mapas Reais -->
@@ -643,58 +641,14 @@ END:VCALENDAR`;
               }
           }, [selectedPoint]);
 
-          // --- INTEGRAÇÃO REAL COM A API DA GEMINI ---
           const handleSendChat = async () => { 
-             if(!chatInput.trim()) return;
-             
-             const userQuery = chatInput;
-             setChatHistory(prev => [...prev, { role: 'user', text: userQuery }]);
-             setChatInput(''); 
-             setIsTyping(true);
-
-             try {
-                 // Adicionámos o .trim() para evitar espaços em branco acidentais na chave
-                 const apiKey = "AIzaSyDBEUPfFZg3P84FWIrckgoQb8QV2bj-7DE".trim(); 
-                 
-                 // System Prompt contextualizado para a aplicação
-                 const systemPrompt = lang === 'pt'
-                    ? "És o Assistente IA Oficial do 2026 Formula Kite World Championships em Viana do Castelo, Praia do Cabedelo. Responde de forma amigável, entusiasta, muito concisa e útil. Podes falar sobre o campeonato, regras (tempo de qualificação 24m, finais 14m), meteorologia (A 'Nortada' do norte de Portugal), ranking, programa e locais na praia."
-                    : "You are the Official AI Assistant for the 2026 Formula Kite World Championships in Viana do Castelo, Praia do Cabedelo. Answer in a friendly, enthusiastic, very concise, and helpful manner. You can talk about the championship, rules (target time 24m qualifying, 14m finals), weather (the famous 'Nortada' wind), ranking, schedule, and beach locations.";
-                 
-                 // Payload simplificado e com a role explícita
-                 const payload = { 
-                     contents: [{ role: "user", parts: [{ text: systemPrompt + "\n\nPergunta do utilizador: " + userQuery }] }] 
-                 };
-
-                 const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
-                     method: 'POST',
-                     headers: { 'Content-Type': 'application/json' },
-                     body: JSON.stringify(payload)
-                 });
-                 
-                 if (!response.ok) {
-                     const errorData = await response.json();
-                     console.error("Detalhes do erro da API Google:", errorData);
-                     // 🚀 EXTRAÍMOS A MENSAGEM EXATA DA GOOGLE!
-                     const googleErrorMessage = errorData.error?.message || "Motivo desconhecido";
-                     throw new Error(googleErrorMessage);
-                 }
-                 
-                 const result = await response.json();
-                 const aiResponseText = result.candidates?.[0]?.content?.parts?.[0]?.text;
-
-                 if (aiResponseText) {
-                     setChatHistory(prev => [...prev, { role: 'model', text: aiResponseText }]);
-                 } else {
-                     throw new Error("Sem resposta válida da API.");
-                 }
-             } catch (error) {
-                 console.error("Erro no Assiste IA:", error);
-                 // Agora a app vai mostrar EXATAMENTE o que a Google reclamou
-                 setChatHistory(prev => [...prev, { role: 'model', text: `⚠️ Erro da Google: ${error.message}` }]);
-             } finally {
+             if(!chatInput) return;
+             setChatHistory(prev => [...prev, { role: 'user', text: chatInput }]);
+             setChatInput(''); setIsTyping(true);
+             setTimeout(() => {
+                 setChatHistory(prev => [...prev, { role: 'model', text: lang === 'pt' ? 'A Formula Kite é uma classe olímpica de extrema velocidade e tática! A nortada em Viana é ideal para estas pranchas hydrofoil.' : 'Formula Kite is an extremely fast and tactical Olympic class! The Nortada wind in Viana is ideal for these hydrofoils.' }]);
                  setIsTyping(false);
-             }
+             }, 1500);
           };
 
           return (
