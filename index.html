@@ -12,8 +12,10 @@
 
     <!-- SISTEMA DE BLOQUEIO / ACESSO -->
     <script>
+        // SISTEMA DE BLOQUEIO DESATIVADO PARA EVITAR ERRO DE "FICHEIRO NÃO ENCONTRADO"
         // Verifica se o utilizador submeteu o formulário de acesso
-        // Se a chave 'acesso_permitido' não for 'sim', redireciona para a página de login
+        // Se a chave 'acesso_permitido' não for 'sim', redirecionava para a página de login
+        /*
         try {
             if (localStorage.getItem('acesso_permitido') !== 'sim') {
                 if (window.location.protocol !== 'blob:' && window.location.protocol !== 'data:') {
@@ -25,6 +27,7 @@
         } catch (error) {
             console.error("Erro ao tentar redirecionar:", error);
         }
+        */
     </script>
     
     <!-- Leaflet CSS para Mapas Reais -->
@@ -221,21 +224,6 @@
 
           const [resTab, setResTab] = useState('overall');
           const [showAR, setShowAR] = useState(false);
-
-          const [chatHistory, setChatHistory] = useState([]);
-          const [chatInput, setChatInput] = useState('');
-          const [isTyping, setIsTyping] = useState(false);
-          const chatEndRef = useRef(null);
-
-          useEffect(() => { setChatHistory([{ role: 'model', text: t.aiWelcome }]); }, [lang, t.aiWelcome]);
-
-          const scrollToBottom = () => { 
-              if(chatEndRef.current) {
-                  chatEndRef.current.scrollIntoView({ behavior: 'smooth' }); 
-              }
-          };
-          
-          useEffect(() => { scrollToBottom(); }, [chatHistory, isTyping, activeTab]);
 
           const toggleFilter = (id) => {
               if (id === 'all') { setActiveFilters(['all']); return; }
@@ -641,16 +629,6 @@ END:VCALENDAR`;
               }
           }, [selectedPoint]);
 
-          const handleSendChat = async () => { 
-             if(!chatInput) return;
-             setChatHistory(prev => [...prev, { role: 'user', text: chatInput }]);
-             setChatInput(''); setIsTyping(true);
-             setTimeout(() => {
-                 setChatHistory(prev => [...prev, { role: 'model', text: lang === 'pt' ? 'A Formula Kite é uma classe olímpica de extrema velocidade e tática! A nortada em Viana é ideal para estas pranchas hydrofoil.' : 'Formula Kite is an extremely fast and tactical Olympic class! The Nortada wind in Viana is ideal for these hydrofoils.' }]);
-                 setIsTyping(false);
-             }, 1500);
-          };
-
           return (
             <div className={isDarkMode ? 'dark' : ''}>
               
@@ -820,7 +798,21 @@ END:VCALENDAR`;
                                 </div>
                               </div>
 
-                              <p className="text-slate-600 dark:text-slate-300 text-xs lg:text-sm leading-relaxed mb-8 transition-colors">{selectedPoint.description}</p>
+                              <p className="text-slate-600 dark:text-slate-300 text-xs lg:text-sm leading-relaxed mb-6 transition-colors">{selectedPoint.description}</p>
+
+                              <button 
+                                  onClick={() => {
+                                      let latSum = 0, lngSum = 0;
+                                      selectedPoint.coords.forEach(c => { latSum += c[0]; lngSum += c[1]; });
+                                      const lat = latSum / selectedPoint.coords.length;
+                                      const lng = lngSum / selectedPoint.coords.length;
+                                      window.open(`https://www.google.com/maps/search/?api=1&query=${lat},${lng}`, '_blank');
+                                  }}
+                                  className="w-full mb-8 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-emerald-500 dark:hover:border-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 text-slate-700 dark:text-slate-300 hover:text-emerald-600 dark:hover:text-emerald-400 font-bold py-3 px-4 rounded-xl flex items-center justify-center gap-2 transition-all shadow-sm active:scale-[0.98]"
+                              >
+                                  <MIcon name="external-link" size={18} />
+                                  {lang === 'pt' ? 'Abrir no Google Maps' : 'Open in Google Maps'}
+                              </button>
 
                               <div className="space-y-3 lg:space-y-4">
                                 <div className="bg-slate-50 dark:bg-slate-800/50 p-4 lg:p-5 rounded-2xl lg:rounded-3xl border border-slate-100 dark:border-slate-700 flex items-center gap-4 lg:gap-5 transition-colors">
@@ -1039,9 +1031,9 @@ END:VCALENDAR`;
                       /* 🏨 SECÇÃO HOTEL FEELVIANA */
                       <div className="flex-1 overflow-y-auto bg-slate-50 dark:bg-slate-950 p-4 lg:p-12 animate-in fade-in duration-500">
                           <div className="max-w-4xl mx-auto space-y-8">
-                              <div className="w-full bg-slate-900 rounded-[2rem] relative overflow-hidden shadow-2xl border border-slate-800">
-                                  <img src="https://images.unsplash.com/photo-1566073771259-6a8506099945?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80" className="w-full h-64 md:h-96 object-cover opacity-60" alt="FeelViana Hotel" />
-                                  <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/40 to-transparent flex flex-col justify-end p-8 lg:p-12">
+                              <div className="w-full bg-slate-900 rounded-[2rem] relative overflow-hidden shadow-2xl border border-slate-800 flex flex-col">
+                                  <img src="https://images.unsplash.com/photo-1566073771259-6a8506099945?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80" className="absolute inset-0 w-full h-full object-cover opacity-50" alt="FeelViana Hotel" />
+                                  <div className="relative z-10 flex-1 bg-gradient-to-t from-slate-900 via-slate-900/80 to-transparent flex flex-col justify-end p-6 pt-32 lg:p-12 lg:pt-48">
                                       <span className="text-emerald-400 font-black uppercase tracking-widest text-xs mb-2 flex items-center gap-2">
                                           <MIcon name="bookmark" size={14} /> {t.hotelTitle}
                                       </span>
@@ -1154,71 +1146,32 @@ END:VCALENDAR`;
                       </div>
                     </div>
                   ) : activeTab === 'ai' ? (
-                      <div className="flex-1 flex flex-col bg-slate-100 dark:bg-slate-950 overflow-hidden animate-in fade-in duration-500 transition-colors">
-                        <div className="bg-emerald-900 dark:bg-emerald-950 text-white p-4 lg:p-6 shadow-md shrink-0 border-b border-emerald-800 z-10">
-                          <div className="max-w-4xl mx-auto">
-                            <h2 className="text-lg lg:text-2xl font-black tracking-tight flex items-center gap-2 lg:gap-3 text-emerald-100">
-                              <MIcon name="sparkles" size={18} className="text-emerald-400 lg:w-6 lg:h-6" /> {t.aiTitle}
-                            </h2>
-                            <p className="text-emerald-400/80 text-[10px] lg:text-sm font-medium mt-1">{t.aiDisclaimer}</p>
-                          </div>
-                        </div>
-
-                        <div className="flex-1 overflow-y-auto p-3 lg:p-8 space-y-4 lg:space-y-6 scroll-smooth">
-                          <div className="max-w-4xl mx-auto space-y-4 lg:space-y-6 pb-2">
-                            {chatHistory.map((msg, index) => (
-                              <div key={index} className={`flex gap-3 lg:gap-4 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}>
-                                <div className={`w-8 h-8 lg:w-10 lg:h-10 rounded-full flex items-center justify-center shrink-0 shadow-sm ${msg.role === 'user' ? 'bg-slate-800 dark:bg-slate-700 text-white' : 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600 dark:text-emerald-400'}`}>
-                                  <MIcon name={msg.role === 'user' ? 'user' : 'bot'} size={16} className="lg:w-5 lg:h-5" />
-                                </div>
-                                <div className={`px-4 py-3 lg:px-5 lg:py-4 rounded-2xl lg:rounded-[2rem] max-w-[85%] text-sm lg:text-base shadow-sm ${
-                                  msg.role === 'user' 
-                                  ? 'bg-slate-800 dark:bg-slate-700 text-white rounded-tr-none' 
-                                  : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 rounded-tl-none border border-slate-100 dark:border-slate-800 leading-relaxed'
-                                }`}>
-                                  {msg.text.split('\n').map((line, i) => (
-                                    <p key={i} className={i !== 0 ? 'mt-1 lg:mt-2' : ''}>{line}</p>
-                                  ))}
-                                </div>
+                      /* NOVA SECÇÃO: Redirecionamento direto para Google Gemini */
+                      <div className="flex-1 flex items-center justify-center bg-slate-50 dark:bg-slate-950 p-4 animate-in fade-in duration-500 transition-colors">
+                          <a 
+                              href="https://gemini.google.com/" 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="group relative overflow-hidden bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[2.5rem] p-8 lg:p-12 max-w-md w-full text-center shadow-xl hover:border-emerald-500/50 dark:hover:border-emerald-500/50 hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1"
+                          >
+                              <div className="absolute inset-0 bg-gradient-to-br from-emerald-50/50 dark:from-emerald-900/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                              
+                              <div className="w-24 h-24 mx-auto bg-slate-50 dark:bg-slate-800 rounded-3xl flex items-center justify-center mb-8 shadow-inner border border-slate-100 dark:border-slate-700 relative z-10 group-hover:scale-110 group-hover:rotate-3 transition-transform duration-500">
+                                  <MIcon name="sparkles" size={48} className="text-emerald-500 dark:text-emerald-400" />
                               </div>
-                            ))}
-                            
-                            {isTyping && (
-                              <div className="flex gap-3 lg:gap-4">
-                                <div className="w-8 h-8 lg:w-10 lg:h-10 rounded-full bg-emerald-100 dark:bg-slate-900/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 shadow-sm">
-                                  <MIcon name="sparkles" size={16} className="animate-spin-slow lg:w-5 lg:h-5" />
-                                </div>
-                                <div className="px-5 py-3 lg:px-6 lg:py-4 rounded-2xl lg:rounded-[2rem] bg-white dark:bg-slate-900 text-slate-500 rounded-tl-none border border-slate-100 dark:border-slate-800 shadow-sm flex items-center gap-1.5 h-[42px] lg:h-[56px]">
-                                  <div className="w-1.5 h-1.5 lg:w-2 lg:h-2 bg-emerald-400 rounded-full typing-dot" />
-                                  <div className="w-1.5 h-1.5 lg:w-2 lg:h-2 bg-emerald-400 rounded-full typing-dot" />
-                                  <div className="w-1.5 h-1.5 lg:w-2 lg:h-2 bg-emerald-400 rounded-full typing-dot" />
-                                </div>
+                              
+                              <h2 className="text-2xl lg:text-3xl font-black text-slate-800 dark:text-white mb-4 relative z-10 tracking-tight">Google Gemini</h2>
+                              
+                              <p className="text-slate-500 dark:text-slate-400 text-sm lg:text-base mb-10 relative z-10 leading-relaxed font-medium">
+                                  {lang === 'pt' 
+                                      ? 'O nosso assistente integrado foi atualizado. Aceda diretamente ao Google Gemini para esclarecer todas as dúvidas sobre o evento, ventos e regulamentos.' 
+                                      : 'Our integrated assistant has been upgraded. Access Google Gemini directly to clear any doubts about the event, winds, and regulations.'}
+                              </p>
+                              
+                              <div className="inline-flex items-center justify-center gap-3 w-full bg-emerald-500 text-white font-bold px-6 py-4 rounded-2xl relative z-10 shadow-[0_8px_20px_-6px_rgba(16,185,129,0.5)] group-hover:bg-emerald-400 transition-colors text-lg">
+                                  {lang === 'pt' ? 'Abrir Google Gemini' : 'Open Google Gemini'} <MIcon name="external-link" size={20} />
                               </div>
-                            )}
-                            <div ref={chatEndRef} />
-                          </div>
-                        </div>
-
-                        <div className="bg-white dark:bg-slate-900 p-3 lg:p-4 border-t border-slate-200 dark:border-slate-800 shrink-0 pb-safe transition-colors z-10">
-                          <div className="max-w-4xl mx-auto relative flex items-center">
-                            <input 
-                              type="text" 
-                              value={chatInput}
-                              onChange={(e) => setChatInput(e.target.value)}
-                              onKeyDown={(e) => e.key === 'Enter' && handleSendChat()}
-                              placeholder={t.aiPlaceholder}
-                              className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-white rounded-full py-3 lg:py-4 pl-4 lg:pl-6 pr-14 lg:pr-16 text-sm lg:text-base outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all shadow-inner"
-                              disabled={isTyping}
-                            />
-                            <button 
-                              onClick={() => handleSendChat()}
-                              disabled={isTyping || !chatInput.trim()}
-                              className="absolute right-1.5 lg:right-2 w-10 h-10 lg:w-11 lg:h-11 rounded-full bg-emerald-500 text-white flex items-center justify-center hover:bg-emerald-600 disabled:opacity-50 disabled:hover:bg-emerald-500 transition-colors shadow-sm"
-                            >
-                              <MIcon name="send" size={16} className={`${chatInput.trim() ? 'ml-1' : ''} lg:w-[18px] lg:h-[18px]`} />
-                            </button>
-                          </div>
-                        </div>
+                          </a>
                       </div>
                   ) : (
                       /* Settings */
