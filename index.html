@@ -12,10 +12,8 @@
 
     <!-- SISTEMA DE BLOQUEIO / ACESSO -->
     <script>
-        // SISTEMA DE BLOQUEIO DESATIVADO PARA EVITAR ERRO DE "FICHEIRO NÃO ENCONTRADO"
         // Verifica se o utilizador submeteu o formulário de acesso
-        // Se a chave 'acesso_permitido' não for 'sim', redirecionava para a página de login
-        /*
+        // Se a chave 'acesso_permitido' não for 'sim', redireciona para a página de login
         try {
             if (localStorage.getItem('acesso_permitido') !== 'sim') {
                 if (window.location.protocol !== 'blob:' && window.location.protocol !== 'data:') {
@@ -27,7 +25,6 @@
         } catch (error) {
             console.error("Erro ao tentar redirecionar:", error);
         }
-        */
     </script>
     
     <!-- Leaflet CSS para Mapas Reais -->
