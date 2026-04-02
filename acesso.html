@@ -9,21 +9,23 @@
 </head>
 <body class="bg-slate-950 min-h-screen flex items-center justify-center p-4 relative overflow-hidden">
     
+    <!-- Imagem de fundo -->
     <div class="absolute inset-0 bg-[url(image_11335c.png)] bg-cover bg-center opacity-20"></div>
+    <!-- Gradiente sobre a imagem de fundo -->
     <div class="absolute inset-0 bg-gradient-to-t from-slate-950 to-transparent"></div>
 
+    <!-- Container do formulário -->
     <div class="max-w-md w-full bg-slate-900/90 backdrop-blur-md border border-slate-800 rounded-3xl p-8 shadow-2xl relative z-10">
         
         <div class="text-center mb-8">
-            <div class="w-16 h-16 bg-blue-600 rounded-2xl mx-auto mb-4 flex items-center justify-center rotate-3 shadow-lg shadow-blue-500/20">
-                <i data-lucide="wind" class="text-white w-8 h-8"></i>
-            </div>
+            <!-- Logótipo -->
+            <img src="image_11335c.png" alt="Formula Kite Viana do Castelo" class="w-32 mx-auto mb-4">
             <h2 class="text-2xl font-bold text-white mb-2">Acesso Exclusivo</h2>
             <p class="text-slate-400 text-sm">Registe-se para aceder ao Mundial de 2026</p>
         </div>
 
         <form action="https://formsubmit.co/drprofissional016@gmail.com" method="POST" id="acessoForm" class="space-y-5">
-            <!-- ATUALIZADO: Redireciona para o index.html correto do novo repositório após o envio -->
+            <!-- Campos ocultos para o FormSubmit -->
             <input type="hidden" name="_next" value="https://didi2003pt-pixel.github.io/App-Viana-World-Championship-2026/index.html">
             <input type="hidden" name="_captcha" value="false">
             <input type="hidden" name="_subject" value="Novo Registo na App Formula Kite!">
